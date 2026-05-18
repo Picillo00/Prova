@@ -4,6 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Neural & Touch Snake Game</title>
+
+    <!-- 1. ICONA DEL BROWSER (FAVICON) -->
+    <link rel="icon" type="image/png" href="preview.png">
+    <link rel="apple-touch-icon" href="preview.png">
+
+    <!-- 2. ANTEPRIMA PER LINK (Meta Tags Open Graph) -->
+    <meta property="og:title" content="Neural Snake Game">
+    <meta property="og:description" content="Gioca a Snake con il touch, la tastiera o la tua Neural Band!">
+    <meta property="og:image" content="preview.png">
+    <meta property="og:type" content="website">
+    
+    <!-- Sostituisci questo link con il tuo link reale di GitHub Pages per una perfetta compatibilità -->
+    <meta property="og:url" content="https://tuo-username.github.io/nome-repo/">
+
     <style>
         body {
             background-color: #121212;
@@ -16,7 +30,6 @@
             height: 100vh;
             margin: 0;
             overflow: hidden;
-            /* Impedisce lo scroll della pagina su mobile durante il gioco */
             touch-action: none; 
         }
 
@@ -65,7 +78,7 @@
     <canvas id="gameCanvas" width="400" height="400"></canvas>
     
     <div class="info-box">
-        <strong>Comandi:</strong> Frecce (PC) | Swipe/Striscia il dito (Mobile)<br>
+        <strong>Comandi:</strong> Frecce (PC) | Swipe (Mobile)<br>
         Pronto per Neural Band via: <code>moveNeural('UP')</code>
     </div>
 
@@ -85,7 +98,6 @@
         let gameSpeed = 100; 
         let gameInterval;
 
-        // --- GESTIONE TOUCH (SWIPE) ---
         let touchStartX = 0;
         let touchStartY = 0;
         let touchEndX = 0;
@@ -93,7 +105,6 @@
 
         window.addEventListener("keydown", handleKeyboard);
         
-        // Ascoltatori eventi Touch
         window.addEventListener("touchstart", (e) => {
             touchStartX = e.changedTouches[0].screenX;
             touchStartY = e.changedTouches[0].screenY;
@@ -105,13 +116,10 @@
             handleSwipe();
         }, { passive: false });
 
-        // Impedisce il movimento della pagina web mentre si gioca su mobile
         window.addEventListener("touchmove", (e) => {
             e.preventDefault();
         }, { passive: false });
 
-
-        // AVVIA IL GIOCO
         main();
 
         function main() {
@@ -170,10 +178,6 @@
             ctx.fillStyle = "#ff0055"; 
             ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize, gridSize);
         }
-
-        // ==========================================
-        // SISTEMA DI INPUT UNIFICATO (NEURAL / TASTIERA / TOUCH)
-        // ==========================================
         
         function moveNeural(direction) {
             const goingUp = dy === -1;
@@ -197,22 +201,17 @@
             }
         }
 
-        // Calcola la direzione dello swipe sul telefono
         function handleSwipe() {
             const diffX = touchEndX - touchStartX;
             const diffY = touchEndY - touchStartY;
-            
-            // Soglia minima di pixel per evitare tocchi involontari
             const threshold = 30; 
 
             if (Math.abs(diffX) > Math.abs(diffY)) {
-                // Movimento Orizzontale
                 if (Math.abs(diffX) > threshold) {
                     if (diffX > 0) moveNeural('RIGHT');
                     else moveNeural('LEFT');
                 }
             } else {
-                // Movimento Verticale
                 if (Math.abs(diffY) > threshold) {
                     if (diffY > 0) moveNeural('DOWN');
                     else moveNeural('UP');
