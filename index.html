@@ -51,7 +51,6 @@
         canvas {
             background-color: #050505;
             display: block;
-            /* MODIFICA: BORDO BLU NEON PERIMETRALE */
             border: 3px solid #00e5ff;
             box-shadow: 0 0 15px rgba(0, 229, 255, 0.7);
             animation: borderGlow 2s infinite alternate;
@@ -74,7 +73,6 @@
             z-index: 10;
         }
 
-        /* SCHERMATA DI GAME OVER INTEGRATA */
         #game-over-screen {
             display: none;
             position: absolute;
@@ -110,11 +108,19 @@
             font-weight: bold;
             color: #050505;
             background-color: #00e5ff;
-            border: none;
+            border: 3px solid transparent;
             border-radius: 5px;
             cursor: pointer;
             box-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
-            transition: transform 0.1s ease;
+            outline: none;
+            transition: all 0.1s ease;
+        }
+
+        /* Evidenzia visivamente il pulsante quando ha il focus automatico */
+        #retry-button:focus {
+            border-color: #ffffff;
+            box-shadow: 0 0 25px rgba(0, 229, 255, 0.9);
+            transform: scale(1.05);
         }
 
         #retry-button:active {
@@ -127,8 +133,7 @@
     <div id="canvas-container">
         <div id="score-board">Punti: <span id="score">0</span></div>
         
-        <!-- Schermata di Game Over -->
-        <div id="game-over-screen" id="gameOverScreen">
+        <div id="game-over-screen">
             <div id="game-over-title">GAME OVER</div>
             <div id="game-over-score">Punteggio: <span id="final-score">0</span></div>
             <button id="retry-button" onclick="restartGame()">Riprova</button>
@@ -143,6 +148,7 @@
         const scoreElement = document.getElementById("score");
         const gameOverScreen = document.getElementById("game-over-screen");
         const finalScoreElement = document.getElementById("final-score");
+        const retryButton = document.getElementById("retry-button");
 
         const gridSize = 20;
         let tileCountX, tileCountY;
@@ -195,8 +201,13 @@
             if (hasGameEnded()) {
                 isGameOver = true;
                 finalScoreElement.innerText = score;
-                gameOverScreen.style.display = "flex"; // Mostra la schermata Riprova
-                return; // Ferma il loop del gioco
+                gameOverScreen.style.display = "flex"; 
+                
+                // SPOSTA IL CURSORE / FOCUS DIRETTAMENTE SUL PULSANTE
+                setTimeout(() => {
+                    retryButton.focus();
+                }, 50);
+                return; 
             }
 
             gameTimeout = setTimeout(function onTick() {
@@ -249,7 +260,7 @@
         }
         
         function moveNeural(direction) {
-            if (isGameOver) return; // Impedisce movimenti se il gioco è finito
+            if (isGameOver) return; 
 
             const goingUp = dy === -1;
             const goingDown = dy === 1;
@@ -273,6 +284,12 @@
         }
 
         function handleSwipe() {
+            // Se è game over, qualsiasi swipe sullo schermo clicca "Riprova"
+            if (isGameOver) {
+                restartGame();
+                return;
+            }
+
             const diffX = touchEndX - touchStartX;
             const diffY = touchEndY - touchStartY;
             const threshold = 30; 
@@ -291,6 +308,12 @@
         }
 
         function handleKeyboard(event) {
+            // Se è game over e premi Invio (13) o Spazio (32), riavvia
+            if (isGameOver && (event.keyCode === 13 || event.keyCode === 32)) {
+                restartGame();
+                return;
+            }
+
             if (event.keyCode === 37) moveNeural('LEFT');
             if (event.keyCode === 38) moveNeural('UP');
             if (event.keyCode === 39) moveNeural('RIGHT');
@@ -320,9 +343,9 @@
 
         function restartGame() {
             isGameOver = false;
-            gameOverScreen.style.display = "none"; // Nasconde la schermata di game over
+            gameOverScreen.style.display = "none"; 
             resetGame();
-            main(); // Riavvia il loop principale
+            main(); 
         }
     </script>
 </body>
