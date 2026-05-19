@@ -1,306 +1,414 @@
-<!DOCTYPE html>
-<html lang="it">
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
-    <!-- ISTRUZIONI ANTI-CACHE PER GLI OCCHIALI -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <title>Neural & Touch Snake Game</title>
-    <link rel="icon" type="image/png" href="preview.png.jpg">
-    <link rel="apple-touch-icon" href="preview.png.jpg">
-    <meta property="og:title" content="Neural Snake Game">
-    <meta property="og:description" content="Gioca a Snake a schermo intero!">
-    <meta property="og:image" content="preview.png.jpg">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://picillo00.github.io/Prova/">
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #050505;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            touch-action: none; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            user-select: none;
-        }
-        #canvas-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        canvas {
-            background-color: #050505;
-            display: block;
-            border: 3px solid #00e5ff;
-            box-shadow: 0 0 15px rgba(0, 229, 255, 0.7);
-            animation: borderGlow 2s infinite alternate;
-        }
-        @keyframes borderGlow {
-            from { box-shadow: 0 0 10px rgba(0, 229, 255, 0.5); }
-            to { box-shadow: 0 0 25px rgba(0, 229, 255, 0.9); }
-        }
-        #score-board {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: rgba(0, 229, 255, 0.8);
-            text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
-            pointer-events: none; 
-            z-index: 10;
-        }
-        #game-over-screen {
-            display: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(5, 5, 5, 0.85);
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 20;
-        }
-        #game-over-title {
-            font-size: 3rem;
-            color: #ff0055;
-            text-shadow: 0 0 20px rgba(255, 0, 85, 0.7);
-            margin-bottom: 10px;
-            font-weight: bold;
-            letter-spacing: 3px;
-        }
-        #game-over-score {
-            font-size: 1.5rem;
-            color: #ffffff;
-            margin-bottom: 30px;
-        }
-        #retry-button {
-            padding: 12px 35px;
-            font-size: 1.3rem;
-            font-weight: bold;
-            color: #050505;
-            background-color: #00e5ff;
-            border: 3px solid transparent;
-            border-radius: 5px;
-            cursor: pointer;
-            box-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
-            outline: none;
-            transition: all 0.1s ease;
-        }
-        /* Evidenzia visivamente il pulsante quando ha il focus automatico */
-        #retry-button:focus {
-            border-color: #ffffff;
-            box-shadow: 0 0 25px rgba(0, 229, 255, 0.9);
-            transform: scale(1.05);
-        }
-        #retry-button:active {
-            transform: scale(0.95);
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#000000">
+<title>Snake Classic</title>
+<link rel="icon" type="image/png" href="preview.png.jpg">
+<style>
+  :root {
+    --bg:#000;
+    --fg:#e8ffe8;
+    --grid:#0a1a0a;
+    --snake:#39ff14;
+    --snake-head:#a6ff5a;
+    --food:#ff3b3b;
+    --accent:#39ff14;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body {
+    margin:0; padding:0; height:100%; background:var(--bg); color:var(--fg);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    overflow: hidden; touch-action: none;
+  }
+  #wrap {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 8px; padding: 8px;
+  }
+  #hud {
+    width: 100%; max-width: 560px; display: flex; justify-content: space-between;
+    align-items: center; font-size: 14px; letter-spacing: 1px; opacity: 0.9;
+  }
+  #mode {
+    width: 100%; max-width: 560px; display: flex; justify-content: center;
+    font-size: 11px; letter-spacing: 1px; opacity: 0.7; margin-top: 2px;
+  }
+  #mode .mpill {
+    background: #0e1a0e; border: 1px solid #1f3a1f; padding: 3px 8px; border-radius: 999px;
+  }
+  #mode .mpill.active { background: #163016; color: var(--accent); border-color: var(--accent); }
+  #hud .pill {
+    background: #0e1a0e; border: 1px solid #1f3a1f; padding: 4px 10px; border-radius: 999px;
+  }
+  #board {
+    background: var(--grid);
+    border: 1px solid #1f3a1f;
+    border-radius: 6px;
+    box-shadow: 0 0 24px rgba(57,255,20,0.15) inset, 0 0 24px rgba(57,255,20,0.1);
+    image-rendering: pixelated;
+    display: block;
+    touch-action: none;
+  }
+  #overlay {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  #overlay .card {
+    background: rgba(0,0,0,0.78);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 18px 22px;
+    text-align: center;
+    pointer-events: auto;
+    box-shadow: 0 0 24px rgba(57,255,20,0.25);
+    max-width: 88%;
+  }
+  #overlay h1 { margin:0 0 6px; font-size: 22px; color: var(--accent); letter-spacing: 2px; }
+  #overlay p  { margin: 6px 0; font-size: 13px; opacity: 0.85; }
+  #overlay button {
+    margin-top: 10px;
+    background: var(--accent); color: #001a00; border: none;
+    padding: 10px 18px; font-weight: 700; border-radius: 6px;
+    font-family: inherit; letter-spacing: 1px; cursor: pointer;
+  }
+  #overlay button:active { transform: translateY(1px); }
+  .hidden { display: none !important; }
+  #pad {
+    display: grid;
+    grid-template-columns: repeat(3, 56px);
+    grid-template-rows: repeat(3, 56px);
+    gap: 6px;
+    margin-top: 6px;
+  }
+  #pad button {
+    background: #0e1a0e; color: var(--accent); border: 1px solid #1f3a1f;
+    border-radius: 8px; font-size: 22px; font-family: inherit;
+  }
+  #pad button:active { background: #163016; }
+  #pad .up    { grid-column: 2; grid-row: 1; }
+  #pad .left  { grid-column: 1; grid-row: 2; }
+  #pad .pause { grid-column: 2; grid-row: 2; font-size: 14px; }
+  #pad .right { grid-column: 3; grid-row: 2; }
+  #pad .down  { grid-column: 2; grid-row: 3; }
+  @media (pointer: fine) {
+    #pad { display: none; }
+  }
+  /* very small displays (Ray-Ban Display style HUD) */
+  @media (max-height: 360px) {
+    #hud { font-size: 11px; }
+    #pad { grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(3, 40px); gap: 4px; }
+    #pad button { font-size: 16px; }
+  }
+</style>
 </head>
 <body>
-    <div id="canvas-container">
-        <div id="score-board">Punti: <span id="score">0</span></div>
-        
-        <div id="game-over-screen">
-            <div id="game-over-title">GAME OVER</div>
-            <div id="game-over-score">Punteggio: <span id="final-score">0</span></div>
-            <button id="retry-button" onclick="restartGame()">Riprova</button>
-        </div>
-        <canvas id="gameCanvas"></canvas>
-    </div>
-    <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-        const scoreElement = document.getElementById("score");
-        const gameOverScreen = document.getElementById("game-over-screen");
-        const finalScoreElement = document.getElementById("final-score");
-        const retryButton = document.getElementById("retry-button");
-        const gridSize = 20;
-        let tileCountX, tileCountY;
-        let snake = [];
-        let food = { x: 5, y: 5 };
-        let dx = 0;
-        let dy = 0;
-        let score = 0;
-        let isGameOver = false;
-        
-        const gameSpeed = 200; 
-        let gameTimeout;
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let touchEndX = 0;
-        let touchEndY = 0;
-        function resizeCanvas() {
-            canvas.width = (Math.floor(window.innerWidth / gridSize) * gridSize) - 6;
-            canvas.height = (Math.floor(window.innerHeight / gridSize) * gridSize) - 6;
-            tileCountX = Math.floor(canvas.width / gridSize);
-            tileCountY = Math.floor(canvas.height / gridSize);
-            if (!isGameOver) resetGame();
-        }
-        window.addEventListener('resize', resizeCanvas);
-        window.addEventListener("keydown", handleKeyboard);
-        window.addEventListener("touchstart", (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }, { passive: false });
-        window.addEventListener("touchend", (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            touchEndY = e.changedTouches[0].screenY;
-            handleSwipe();
-        }, { passive: false });
-        window.addEventListener("touchmove", (e) => {
-            e.preventDefault();
-        }, { passive: false });
-        resizeCanvas();
-        main();
-        function main() {
-            if (hasGameEnded()) {
-                isGameOver = true;
-                finalScoreElement.innerText = score;
-                gameOverScreen.style.display = "flex"; 
-                
-                // SPOSTA IL CURSORE / FOCUS DIRETTAMENTE SUL PULSANTE
-                setTimeout(() => {
-                    retryButton.focus();
-                }, 50);
-                return; 
-            }
-            gameTimeout = setTimeout(function onTick() {
-                clearCanvas();
-                drawFood();
-                moveSnake();
-                drawSnake();
-                main();
-            }, gameSpeed);
-        }
-        function clearCanvas() {
-            ctx.fillStyle = "#050505";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-        function drawSnake() {
-            snake.forEach((part, index) => {
-                ctx.fillStyle = index === 0 ? "#00e5ff" : "#0097a7";
-                ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize - 1, gridSize - 1);
-            });
-        }
-        function moveSnake() {
-            if (dx === 0 && dy === 0) return;
-            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
-            snake.unshift(head);
-            if (snake[0].x === food.x && snake[0].y === food.y) {
-                score += 10;
-                scoreElement.innerText = score;
-                generateFood();
-            } else {
-                snake.pop();
-            }
-        }
-        function generateFood() {
-            food.x = Math.floor(Math.random() * tileCountX);
-            food.y = Math.floor(Math.random() * tileCountY);
-            snake.forEach(function(part) {
-                if (part.x === food.x && part.y === food.y) generateFood();
-            });
-        }
-        function drawFood() {
-            ctx.fillStyle = "#ff0055"; 
-            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 1, gridSize - 1);
-        }
-        
-        function moveNeural(direction) {
-            if (isGameOver) return; 
-            const goingUp = dy === -1;
-            const goingDown = dy === 1;
-            const goingRight = dx === 1;
-            const goingLeft = dx === -1;
-            switch(direction.toUpperCase()) {
-                case 'LEFT':
-                    if (!goingRight) { dx = -1; dy = 0; }
-                    break;
-                case 'UP':
-                    if (!goingDown) { dx = 0; dy = -1; }
-                    break;
-                case 'RIGHT':
-                    if (!goingLeft) { dx = 1; dy = 0; }
-                    break;
-                case 'DOWN':
-                    if (!goingUp) { dx = 0; dy = 1; }
-                    break;
-            }
-        }
-        function handleSwipe() {
-            // Se è game over, qualsiasi swipe sullo schermo clicca "Riprova"
-            if (isGameOver) {
-                restartGame();
-                return;
-            }
-            const diffX = touchEndX - touchStartX;
-            const diffY = touchEndY - touchStartY;
-            const threshold = 30; 
-            if (Math.abs(diffX) > Math.abs(diffY)) {
-                if (Math.abs(diffX) > threshold) {
-                    if (diffX > 0) moveNeural('RIGHT');
-                    else moveNeural('LEFT');
-                }
-            } else {
-                if (Math.abs(diffY) > threshold) {
-                    if (diffY > 0) moveNeural('DOWN');
-                    else moveNeural('UP');
-                }
-            }
-        }
-        function handleKeyboard(event) {
-            // Se è game over e premi Invio (13) o Spazio (32), riavvia
-            if (isGameOver && (event.keyCode === 13 || event.keyCode === 32)) {
-                restartGame();
-                return;
-            }
-            if (event.keyCode === 37) moveNeural('LEFT');
-            if (event.keyCode === 38) moveNeural('UP');
-            if (event.keyCode === 39) moveNeural('RIGHT');
-            if (event.keyCode === 40) moveNeural('DOWN');
-        }
-        window.moveNeural = moveNeural;
-        function hasGameEnded() {
-            if (snake.length === 0) return false;
-            
-            for (let i = 4; i < snake.length; i++) {
-                if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) return true;
-            }
-            return snake[0].x < 0 || snake[0].x >= tileCountX || snake[0].y < 0 || snake[0].y >= tileCountY;
-        }
-        function resetGame() {
-            clearTimeout(gameTimeout);
-            snake = [{ x: Math.floor(tileCountX / 2), y: Math.floor(tileCountY / 2) }];
-            score = 0;
-            scoreElement.innerText = score;
-            dx = 0; 
-            dy = 0;
-            generateFood();
-        }
-        function restartGame() {
-            isGameOver = false;
-            gameOverScreen.style.display = "none"; 
-            resetGame();
-            main(); 
-        }
-    </script>
+<div id="wrap">
+  <div id="hud">
+    <span class="pill">SCORE <b id="score">0</b></span>
+    <span class="pill">BEST <b id="best">0</b></span>
+    <span class="pill">SPD <b id="spd">1</b></span>
+  </div>
+  <div id="mode">
+    <span class="mpill" id="modePill">MODE: PINCH (1-btn)</span>
+  </div>
+  <canvas id="board" width="400" height="400"></canvas>
+  <div id="pad" aria-hidden="false">
+    <button class="up"    data-dir="up">&#9650;</button>
+    <button class="left"  data-dir="left">&#9664;</button>
+    <button class="pause" data-act="pause">II</button>
+    <button class="right" data-dir="right">&#9654;</button>
+    <button class="down"  data-dir="down">&#9660;</button>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="card" id="card">
+    <h1>SNAKE</h1>
+    <p><b>Pinch</b> (or click/tap/Space) = turn RIGHT 90&deg;</p>
+    <p><b>Long-pinch / double-pinch</b> = turn LEFT (and pause when held)</p>
+    <button id="startBtn">START</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const bestEl  = document.getElementById('best');
+  const spdEl   = document.getElementById('spd');
+  const overlay = document.getElementById('overlay');
+  const card    = document.getElementById('card');
+  const startBtn= document.getElementById('startBtn');
+
+  const COLS = 20, ROWS = 20;
+  let CELL = 20;
+
+  // Responsive sizing — fit board to the smaller of window dims
+  function resize() {
+    const padReserved = (matchMedia('(pointer: fine)').matches ? 60 : 240);
+    const maxW = Math.min(window.innerWidth - 16, 560);
+    const maxH = window.innerHeight - padReserved;
+    const size = Math.max(160, Math.min(maxW, maxH));
+    CELL = Math.floor(size / COLS);
+    const px = CELL * COLS;
+    canvas.width = px; canvas.height = px;
+    canvas.style.width = px + 'px';
+    canvas.style.height = px + 'px';
+    draw();
+  }
+  window.addEventListener('resize', resize);
+
+  // Game state
+  let snake, dir, nextDir, food, score, best, tickMs, timer, running, paused, speedLevel;
+
+  function reset() {
+    snake = [{x:9,y:10},{x:8,y:10},{x:7,y:10}];
+    dir = {x:1,y:0};
+    nextDir = dir;
+    score = 0;
+    speedLevel = 1;
+    tickMs = 130;
+    placeFood();
+    updateHud();
+  }
+
+  function placeFood() {
+    while (true) {
+      const f = { x: Math.floor(Math.random()*COLS), y: Math.floor(Math.random()*ROWS) };
+      if (!snake.some(s => s.x===f.x && s.y===f.y)) { food = f; return; }
+    }
+  }
+
+  function updateHud() {
+    scoreEl.textContent = score;
+    bestEl.textContent  = best;
+    spdEl.textContent   = speedLevel;
+  }
+
+  function loadBest() {
+    try { best = parseInt(localStorage.getItem('snake_best')||'0',10) || 0; }
+    catch(e) { best = 0; }
+  }
+  function saveBest() {
+    try { localStorage.setItem('snake_best', String(best)); } catch(e) {}
+  }
+
+  function step() {
+    dir = nextDir;
+    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+    // wall collide
+    if (head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS) return gameOver();
+    // self collide
+    if (snake.some(s => s.x===head.x && s.y===head.y)) return gameOver();
+    snake.unshift(head);
+    if (head.x===food.x && head.y===food.y) {
+      score++;
+      if (score > best) { best = score; saveBest(); }
+      if (score % 5 === 0 && tickMs > 55) { tickMs -= 10; speedLevel++; restartTimer(); }
+      placeFood();
+    } else {
+      snake.pop();
+    }
+    updateHud();
+    draw();
+  }
+
+  function draw() {
+    // background
+    ctx.fillStyle = '#0a1a0a';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    // faint grid
+    ctx.strokeStyle = '#102510';
+    ctx.lineWidth = 1;
+    for (let i=1;i<COLS;i++) {
+      ctx.beginPath(); ctx.moveTo(i*CELL+0.5, 0); ctx.lineTo(i*CELL+0.5, canvas.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i*CELL+0.5); ctx.lineTo(canvas.width, i*CELL+0.5); ctx.stroke();
+    }
+    // food
+    ctx.fillStyle = '#ff3b3b';
+    drawCell(food.x, food.y, 0.7);
+    // snake
+    snake.forEach((s,i) => {
+      ctx.fillStyle = i===0 ? '#a6ff5a' : '#39ff14';
+      drawCell(s.x, s.y, i===0 ? 0.95 : 0.85);
+    });
+  }
+  function drawCell(cx, cy, scale) {
+    const pad = (1-scale)*CELL/2;
+    ctx.fillRect(cx*CELL+pad, cy*CELL+pad, CELL-pad*2, CELL-pad*2);
+  }
+
+  function restartTimer() {
+    if (timer) clearInterval(timer);
+    timer = setInterval(() => { if (!paused) step(); }, tickMs);
+  }
+
+  function start() {
+    overlay.classList.add('hidden');
+    reset();
+    running = true; paused = false;
+    restartTimer();
+    draw();
+  }
+
+  function pause(force) {
+    if (!running) return;
+    paused = (force===undefined) ? !paused : !!force;
+    if (paused) showCard('PAUSED', 'Tap or press Space to resume', 'RESUME');
+    else overlay.classList.add('hidden');
+  }
+
+  function gameOver() {
+    running = false;
+    clearInterval(timer); timer = null;
+    showCard('GAME OVER', `Score ${score} — Best ${best}`, 'RESTART');
+  }
+
+  function showCard(title, msg, btn) {
+    card.querySelector('h1').textContent = title;
+    const ps = card.querySelectorAll('p');
+    ps[0].textContent = msg;
+    ps[1].textContent = '';
+    startBtn.textContent = btn;
+    overlay.classList.remove('hidden');
+  }
+
+  // ---------- INPUT MODEL ----------
+  // Neural-band compatible: the band emits standard pointer events on pinch.
+  //   single pinch (click)         -> turn RIGHT 90 degrees
+  //   long pinch (>= 380ms hold)   -> turn LEFT 90 degrees  (release-event triggered)
+  //   double pinch (within 320ms)  -> pause / resume
+  // Also supports keyboard (Space=right, Shift+Space=left, P=pause, arrows=absolute) for desktop testing.
+
+  const LONG_MS = 380;
+  const DOUBLE_MS = 320;
+
+  function turnRight() {
+    // rotate current direction 90 clockwise
+    const m = { x: -dir.y, y: dir.x };
+    if (m.x === -dir.x && m.y === -dir.y) return;
+    nextDir = m;
+  }
+  function turnLeft() {
+    // rotate current direction 90 counter-clockwise
+    const m = { x: dir.y, y: -dir.x };
+    if (m.x === -dir.x && m.y === -dir.y) return;
+    nextDir = m;
+  }
+  function setDirAbs(name) {
+    const m = { up:{x:0,y:-1}, down:{x:0,y:1}, left:{x:-1,y:0}, right:{x:1,y:0} }[name];
+    if (!m) return;
+    if (m.x === -dir.x && m.y === -dir.y) return;
+    nextDir = m;
+  }
+
+  // -------- unified pinch / click / tap handler --------
+  let pressTs = 0;
+  let pressLongFired = false;
+  let lastShortTs = 0;
+  let longTimer = null;
+
+  function onPressStart() {
+    pressTs = Date.now();
+    pressLongFired = false;
+    clearTimeout(longTimer);
+    longTimer = setTimeout(() => {
+      pressLongFired = true;
+      // long pinch = turn left
+      if (running && !paused) turnLeft();
+      else if (running && paused) pause(false);   // resume from a long hold
+    }, LONG_MS);
+  }
+  function onPressEnd() {
+    clearTimeout(longTimer);
+    const held = Date.now() - pressTs;
+    if (pressLongFired) return;                   // long already handled
+    // short tap -> either double or single
+    const now = Date.now();
+    if (now - lastShortTs < DOUBLE_MS) {
+      lastShortTs = 0;
+      // double pinch -> pause/resume or start
+      if (!running) start();
+      else pause();
+      return;
+    }
+    lastShortTs = now;
+    // delay a hair to see if a double comes in
+    setTimeout(() => {
+      if (lastShortTs !== now) return;            // a double consumed it
+      lastShortTs = 0;
+      if (!running) { start(); return; }
+      if (paused)   { pause(false); return; }
+      turnRight();                                // single pinch -> right
+    }, DOUBLE_MS);
+  }
+  function onPressCancel() {
+    clearTimeout(longTimer);
+    pressLongFired = false;
+  }
+
+  // Pointer events cover mouse + touch + pen + (most likely) neural-band webview clicks
+  canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); onPressStart(); }, { passive:false });
+  canvas.addEventListener('pointerup',   (e) => { e.preventDefault(); onPressEnd();   }, { passive:false });
+  canvas.addEventListener('pointercancel', onPressCancel);
+  canvas.addEventListener('pointerleave',  onPressCancel);
+
+  // Whole-window click fallback (some webviews don't fire pointer events on canvas)
+  // Excludes the on-screen pad + start button which have their own handlers.
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#pad') || e.target.closest('#card')) return;
+    // synthesize a tap if pointerup didn't fire (some webviews)
+    if (!pressTs || Date.now() - pressTs > 800) {
+      onPressStart();
+      setTimeout(onPressEnd, 10);
+    }
+  });
+
+  // Keyboard:
+  //   Space            -> right (pinch equivalent)
+  //   Shift+Space / L  -> left  (long-pinch equivalent)
+  //   P / double-Space -> pause (double-pinch equivalent)
+  //   Arrows / WASD    -> absolute direction (desktop convenience)
+  //   Enter            -> start when on overlay
+  const ABS = {
+    ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right',
+    w:'up', s:'down', a:'left', d:'right', W:'up', S:'down', A:'left', D:'right',
+  };
+  window.addEventListener('keydown', (e) => {
+    if (e.repeat) return;
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (!running) { start(); return; }
+      if (e.shiftKey) { turnLeft(); return; }
+      turnRight(); return;
+    }
+    if (e.key === 'p' || e.key === 'P') { e.preventDefault(); pause(); return; }
+    if (e.key === 'l' || e.key === 'L') { e.preventDefault(); if (running && !paused) turnLeft(); return; }
+    if (e.key === 'Enter' && !running) { start(); return; }
+    const d = ABS[e.key]; if (d) { setDirAbs(d); e.preventDefault(); }
+  });
+
+  // On-screen pad (desktop / phone preview)
+  document.getElementById('pad').addEventListener('click', (e) => {
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.dir) setDirAbs(t.dataset.dir);
+    else if (t.dataset.act === 'pause') pause();
+  });
+
+  startBtn.addEventListener('click', () => {
+    if (running && paused) { pause(false); }
+    else { start(); }
+  });
+
+  // init
+  loadBest();
+  resize();
+  reset();
+  draw();
+  showCard('SNAKE', 'Arrows / WASD / Swipe to steer. Space to pause.', 'START');
+})();
+</script>
 </body>
 </html>
