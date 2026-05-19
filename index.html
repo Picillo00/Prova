@@ -5,81 +5,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Neural & Touch Snake Game</title>
 
-    <!-- 1. ICONA DEL BROWSER (FAVICON) -->
     <link rel="icon" type="image/png" href="preview.png">
     <link rel="apple-touch-icon" href="preview.png">
 
-    <!-- 2. ANTEPRIMA PER LINK (Meta Tags Open Graph) -->
     <meta property="og:title" content="Neural Snake Game">
-    <meta property="og:description" content="Gioca a Snake con il touch, la tastiera o la tua Neural Band!">
+    <meta property="og:description" content="Gioca a Snake a schermo intero!">
     <meta property="og:image" content="preview.png">
     <meta property="og:type" content="website">
-    
-    <!-- Sostituisci questo link con il tuo link reale di GitHub Pages per una perfetta compatibilità -->
-    <meta property="og:url" content="https://tuo-username.github.io/nome-repo/">
 
     <style>
-        body {
-            background-color: #121212;
-            color: #ffffff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        * {
+            box-sizing: border-box;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050505;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
             touch-action: none; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        h1 {
-            margin: 5px 0;
-            font-size: 2.2rem;
-            letter-spacing: 2px;
-            text-shadow: 0 0 15px #00e5ff;
-            color: #00e5ff;
-        }
-
-        #score-board {
-            font-size: 1.2rem;
-            margin-bottom: 10px;
-            font-weight: 300;
-        }
-
-        #score {
-            font-weight: bold;
-            color: #00e5ff;
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         canvas {
-            border: 4px solid #00e5ff;
             background-color: #050505;
-            box-shadow: 0 0 25px rgba(0, 229, 255, 0.3);
-            border-radius: 4px;
-            max-width: 90vw;
-            max-height: 50vh;
+            display: block;
         }
 
-        .info-box {
-            margin-top: 15px;
-            font-size: 0.85rem;
-            color: #888;
-            text-align: center;
-            line-height: 1.4;
-            padding: 0 10px;
+        #score-board {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: rgba(0, 229, 255, 0.8);
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+            pointer-events: none; /* Non blocca i tocchi sullo schermo */
+            z-index: 10;
         }
     </style>
 </head>
 <body>
 
-    <h1>NEURAL SNAKE</h1>
-    <div id="score-board">Punteggio: <span id="score">0</span></div>
-    <canvas id="gameCanvas" width="400" height="400"></canvas>
-    
-    <div class="info-box">
-        <strong>Comandi:</strong> Frecce (PC) | Swipe (Mobile)<br>
-        Pronto per Neural Band via: <code>moveNeural('UP')</code>
+    <div id="canvas-container">
+        <div id="score-board">Punti: <span id="score">0</span></div>
+        <canvas id="gameCanvas"></canvas>
     </div>
 
     <script>
@@ -87,24 +70,37 @@
         const ctx = canvas.getContext("2d");
         const scoreElement = document.getElementById("score");
 
+        // Configurazione griglia dinamica basata sullo schermo
         const gridSize = 20;
-        const tileCount = canvas.width / gridSize;
+        let tileCountX, tileCountY;
 
-        let snake = [{ x: 10, y: 10 }];
+        let snake = [];
         let food = { x: 5, y: 5 };
         let dx = 0;
         let dy = 0;
         let score = 0;
-        let gameSpeed = 1; 
-        let gameInterval;
+        
+        // CORREZIONE: 100ms è la velocità ottimale (prima era 1ms, ingiocabile)
+        const gameSpeed = 100; 
+        let gameTimeout;
 
         let touchStartX = 0;
         let touchStartY = 0;
         let touchEndX = 0;
         let touchEndY = 0;
 
+        // Adatta il canvas a pieno schermo mantenendo i pixel multipli della griglia
+        function resizeCanvas() {
+            canvas.width = Math.floor(window.innerWidth / gridSize) * gridSize;
+            canvas.height = Math.floor(window.innerHeight / gridSize) * gridSize;
+            tileCountX = canvas.width / gridSize;
+            tileCountY = canvas.height / gridSize;
+            resetGame();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
         window.addEventListener("keydown", handleKeyboard);
-        
         window.addEventListener("touchstart", (e) => {
             touchStartX = e.changedTouches[0].screenX;
             touchStartY = e.changedTouches[0].screenY;
@@ -120,6 +116,8 @@
             e.preventDefault();
         }, { passive: false });
 
+        // Inizializza le dimensioni ed avvia il loop principale
+        resizeCanvas();
         main();
 
         function main() {
@@ -128,7 +126,7 @@
                 resetGame();
             }
 
-            gameInterval = setTimeout(function onTick() {
+            gameTimeout = setTimeout(function onTick() {
                 clearCanvas();
                 drawFood();
                 moveSnake();
@@ -144,10 +142,9 @@
 
         function drawSnake() {
             snake.forEach((part, index) => {
-                ctx.fillStyle = index === 0 ? "#00ffff" : "#00b3cc";
+                ctx.fillStyle = index === 0 ? "#00e5ff" : "#0097a7";
                 ctx.strokeStyle = "#050505";
-                ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize, gridSize);
-                ctx.strokeRect(part.x * gridSize, part.y * gridSize, gridSize, gridSize);
+                ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize - 1, gridSize - 1);
             });
         }
 
@@ -167,8 +164,8 @@
         }
 
         function generateFood() {
-            food.x = Math.floor(Math.random() * tileCount);
-            food.y = Math.floor(Math.random() * tileCount);
+            food.x = Math.floor(Math.random() * tileCountX);
+            food.y = Math.floor(Math.random() * tileCountY);
             snake.forEach(function(part) {
                 if (part.x === food.x && part.y === food.y) generateFood();
             });
@@ -176,7 +173,7 @@
 
         function drawFood() {
             ctx.fillStyle = "#ff0055"; 
-            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize, gridSize);
+            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 1, gridSize - 1);
         }
         
         function moveNeural(direction) {
@@ -229,17 +226,21 @@
         window.moveNeural = moveNeural;
 
         function hasGameEnded() {
+            if (snake.length === 0) return false;
+            
             for (let i = 4; i < snake.length; i++) {
                 if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) return true;
             }
-            return snake[0].x < 0 || snake[0].x >= tileCount || snake[0].y < 0 || snake[0].y >= tileCount;
+            return snake[0].x < 0 || snake[0].x >= tileCountX || snake[0].y < 0 || snake[0].y >= tileCountY;
         }
 
         function resetGame() {
-            snake = [{ x: 10, y: 10 }];
+            clearTimeout(gameTimeout);
+            snake = [{ x: Math.floor(tileCountX / 2), y: Math.floor(tileCountY / 2) }];
             score = 0;
             scoreElement.innerText = score;
-            dx = 0; dy = 0;
+            dx = 0; 
+            dy = 0;
             generateFood();
         }
     </script>
