@@ -3,59 +3,61 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#d0ffd0">
 <title>Snake Classic</title>
 <link rel="icon" type="image/png" href="preview.png.jpg">
 <style>
   :root {
-    --bg:#000;
-    --fg:#e8ffe8;
-    --grid:#0a1a0a;
-    --snake:#39ff14;
-    --snake-head:#a6ff5a;
-    --food:#ff3b3b;
-    --accent:#39ff14;
+    --bg: #000;
+    --fg: #103010;
+    --grid: #d0ffd0; /* Campo verde chiaro chiaro */
+    --grid-line: #b0e8b0; /* Linee della griglia interne */
+    --snake: #008800; /* Serpente verde scuro per contrasto */
+    --snake-head: #004400; /* Testa del serpente */
+    --food: #ff1010; /* Cibo rosso acceso */
+    --accent: #39ff14;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
   html, body {
-    margin:0; padding:0; height:100%; background:var(--bg); color:var(--fg);
+    margin:0; padding:0; height:100%; background:var(--bg); color:#e8ffe8;
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     overflow: hidden; touch-action: none;
   }
   #wrap {
     position: fixed; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 8px; padding: 8px;
+    align-items: center; justify-content: center; gap: 8px; 
+    padding: 30px 12px 12px 12px; /* Aumentato il padding superiore per non tagliare le scritte */
   }
   #hud {
     width: 100%; max-width: 560px; display: flex; justify-content: space-between;
     align-items: center; font-size: 14px; letter-spacing: 1px; opacity: 0.9;
+    margin-top: 10px; /* Spinge l'HUD più in basso */
   }
   #mode {
     width: 100%; max-width: 560px; display: flex; justify-content: center;
-    font-size: 11px; letter-spacing: 1px; opacity: 0.7; margin-top: 2px;
+    font-size: 11px; letter-spacing: 1px; opacity: 0.7; margin-top: 4px;
   }
   #mode .mpill {
-    background: #0e1a0e; border: 1px solid #1f3a1f; padding: 3px 8px; border-radius: 999px;
+    background: #0e1a0e; border: 1px solid #1f3a1f; padding: 3px 8px; border-radius: 999px; color: var(--accent);
   }
-  #mode .mpill.active { background: #163016; color: var(--accent); border-color: var(--accent); }
   #hud .pill {
     background: #0e1a0e; border: 1px solid #1f3a1f; padding: 4px 10px; border-radius: 999px;
   }
   #board {
     background: var(--grid);
-    border: 1px solid #1f3a1f;
+    border: 2px solid #1f3a1f;
     border-radius: 6px;
-    box-shadow: 0 0 24px rgba(57,255,20,0.15) inset, 0 0 24px rgba(57,255,20,0.1);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
     image-rendering: pixelated;
     display: block;
     touch-action: none;
   }
   #overlay {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    pointer-events: none;
+    pointer-events: none; z-index: 10;
   }
   #overlay .card {
-    background: rgba(0,0,0,0.78);
+    background: rgba(0,0,0,0.88);
     border: 1px solid var(--accent);
     border-radius: 10px;
     padding: 18px 22px;
@@ -65,7 +67,7 @@
     max-width: 88%;
   }
   #overlay h1 { margin:0 0 6px; font-size: 22px; color: var(--accent); letter-spacing: 2px; }
-  #overlay p  { margin: 6px 0; font-size: 13px; opacity: 0.85; }
+  #overlay p  { margin: 6px 0; font-size: 13px; opacity: 0.85; color: #fff; }
   #overlay button {
     margin-top: 10px;
     background: var(--accent); color: #001a00; border: none;
@@ -94,9 +96,9 @@
   @media (pointer: fine) {
     #pad { display: none; }
   }
-  /* very small displays (Ray-Ban Display style HUD) */
-  @media (max-height: 360px) {
-    #hud { font-size: 11px; }
+  @media (max-height: 400px) {
+    #wrap { padding-top: 15px; gap: 4px; }
+    #hud { font-size: 11px; margin-top: 0; }
     #pad { grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(3, 40px); gap: 4px; }
     #pad button { font-size: 16px; }
   }
@@ -110,7 +112,7 @@
     <span class="pill">SPD <b id="spd">1</b></span>
   </div>
   <div id="mode">
-    <span class="mpill" id="modePill">MODE: PINCH (1-btn)</span>
+    <span class="mpill" id="modePill">MODE: PINCH (Neural-Band)</span>
   </div>
   <canvas id="board" width="400" height="400"></canvas>
   <div id="pad" aria-hidden="false">
@@ -125,8 +127,9 @@
 <div id="overlay">
   <div class="card" id="card">
     <h1>SNAKE</h1>
-    <p><b>Pinch</b> (or click/tap/Space) = turn RIGHT 90&deg;</p>
-    <p><b>Long-pinch / double-pinch</b> = turn LEFT (and pause when held)</p>
+    <p><b>1 Click / Pinch</b> = Gira a DESTRA (90&deg;)</p>
+    <p><b>Click Lungo</b> = Gira a SINISTRA (90&deg;)</p>
+    <p><b>Doppio Click / Pinch</b> = PAUSA / RIPRENDI</p>
     <button id="startBtn">START</button>
   </div>
 </div>
@@ -145,10 +148,9 @@
   const COLS = 20, ROWS = 20;
   let CELL = 20;
 
-  // Responsive sizing — fit board to the smaller of window dims
   function resize() {
-    const padReserved = (matchMedia('(pointer: fine)').matches ? 60 : 240);
-    const maxW = Math.min(window.innerWidth - 16, 560);
+    const padReserved = (matchMedia('(pointer: fine)').matches ? 80 : 260);
+    const maxW = Math.min(window.innerWidth - 24, 560);
     const maxH = window.innerHeight - padReserved;
     const size = Math.max(160, Math.min(maxW, maxH));
     CELL = Math.floor(size / COLS);
@@ -160,7 +162,6 @@
   }
   window.addEventListener('resize', resize);
 
-  // Game state
   let snake, dir, nextDir, food, score, best, tickMs, timer, running, paused, speedLevel;
 
   function reset() {
@@ -198,9 +199,7 @@
   function step() {
     dir = nextDir;
     const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
-    // wall collide
     if (head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS) return gameOver();
-    // self collide
     if (snake.some(s => s.x===head.x && s.y===head.y)) return gameOver();
     snake.unshift(head);
     if (head.x===food.x && head.y===food.y) {
@@ -216,25 +215,27 @@
   }
 
   function draw() {
-    // background
-    ctx.fillStyle = '#0a1a0a';
+    // Sfondo Verde Chiaro Chiaro
+    ctx.fillStyle = '#d0ffd0';
     ctx.fillRect(0,0,canvas.width,canvas.height);
-    // faint grid
-    ctx.strokeStyle = '#102510';
+    
+    // Linee griglia soft
+    ctx.strokeStyle = '#b0e8b0';
     ctx.lineWidth = 1;
     for (let i=1;i<COLS;i++) {
       ctx.beginPath(); ctx.moveTo(i*CELL+0.5, 0); ctx.lineTo(i*CELL+0.5, canvas.height); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0, i*CELL+0.5); ctx.lineTo(canvas.width, i*CELL+0.5); ctx.stroke();
     }
-    // food
-    ctx.fillStyle = '#ff3b3b';
-    drawCell(food.x, food.y, 0.7);
-    // snake
+    // Food Rosso
+    ctx.fillStyle = '#ff1010';
+    drawCell(food.x, food.y, 0.75);
+    // Snake Verde Scuro per leggibilità su fondo chiaro
     snake.forEach((s,i) => {
-      ctx.fillStyle = i===0 ? '#a6ff5a' : '#39ff14';
+      ctx.fillStyle = i===0 ? '#004400' : '#008800';
       drawCell(s.x, s.y, i===0 ? 0.95 : 0.85);
     });
   }
+  
   function drawCell(cx, cy, scale) {
     const pad = (1-scale)*CELL/2;
     ctx.fillRect(cx*CELL+pad, cy*CELL+pad, CELL-pad*2, CELL-pad*2);
@@ -253,50 +254,43 @@
     draw();
   }
 
-  function pause(force) {
+  function togglePause() {
     if (!running) return;
-    paused = (force===undefined) ? !paused : !!force;
-    if (paused) showCard('PAUSED', 'Tap or press Space to resume', 'RESUME');
-    else overlay.classList.add('hidden');
+    paused = !paused;
+    if (paused) {
+      showCard('PAUSATO', 'Fai doppio click per riprendere', 'RIPRENDI');
+    } else {
+      overlay.classList.add('hidden');
+    }
   }
 
   function gameOver() {
     running = false;
     clearInterval(timer); timer = null;
-    showCard('GAME OVER', `Score ${score} — Best ${best}`, 'RESTART');
+    showCard('GAME OVER', `Punteggio: ${score} — Migliore: ${best}`, 'REPLAY');
   }
 
   function showCard(title, msg, btn) {
     card.querySelector('h1').textContent = title;
     const ps = card.querySelectorAll('p');
     ps[0].textContent = msg;
-    ps[1].textContent = '';
+    if(ps[1]) ps[1].textContent = '';
     startBtn.textContent = btn;
     overlay.classList.remove('hidden');
   }
 
-  // ---------- INPUT MODEL ----------
-  // Neural-band compatible: the band emits standard pointer events on pinch.
-  //   single pinch (click)         -> turn RIGHT 90 degrees
-  //   long pinch (>= 380ms hold)   -> turn LEFT 90 degrees  (release-event triggered)
-  //   double pinch (within 320ms)  -> pause / resume
-  // Also supports keyboard (Space=right, Shift+Space=left, P=pause, arrows=absolute) for desktop testing.
-
-  const LONG_MS = 380;
-  const DOUBLE_MS = 320;
-
   function turnRight() {
-    // rotate current direction 90 clockwise
     const m = { x: -dir.y, y: dir.x };
     if (m.x === -dir.x && m.y === -dir.y) return;
     nextDir = m;
   }
+  
   function turnLeft() {
-    // rotate current direction 90 counter-clockwise
     const m = { x: dir.y, y: -dir.x };
     if (m.x === -dir.x && m.y === -dir.y) return;
     nextDir = m;
   }
+  
   function setDirAbs(name) {
     const m = { up:{x:0,y:-1}, down:{x:0,y:1}, left:{x:-1,y:0}, right:{x:1,y:0} }[name];
     if (!m) return;
@@ -304,110 +298,110 @@
     nextDir = m;
   }
 
-  // -------- unified pinch / click / tap handler --------
-  let pressTs = 0;
-  let pressLongFired = false;
-  let lastShortTs = 0;
-  let longTimer = null;
+  // ------ INPUT UNIFICATO (Ottimizzato per Neural-Band) ------
+  let lastClickTime = 0;
+  let touchStartTs = 0;
+  let longPinchTimeout = null;
+  let isLongPinch = false;
+  const DOUBLE_DELAY = 280; 
+  const LONG_DELAY = 350;
 
-  function onPressStart() {
-    pressTs = Date.now();
-    pressLongFired = false;
-    clearTimeout(longTimer);
-    longTimer = setTimeout(() => {
-      pressLongFired = true;
-      // long pinch = turn left
-      if (running && !paused) turnLeft();
-      else if (running && paused) pause(false);   // resume from a long hold
-    }, LONG_MS);
+  function handleActionStart() {
+    touchStartTs = Date.now();
+    isLongPinch = false;
+    
+    clearTimeout(longPinchTimeout);
+    if (running && !paused) {
+      longPinchTimeout = setTimeout(() => {
+        isLongPinch = true;
+        turnLeft(); // Turn left on long hold
+      }, LONG_DELAY);
+    }
   }
-  function onPressEnd() {
-    clearTimeout(longTimer);
-    const held = Date.now() - pressTs;
-    if (pressLongFired) return;                   // long already handled
-    // short tap -> either double or single
+
+  function handleActionEnd(e) {
+    clearTimeout(longPinchTimeout);
+    
+    if (isLongPinch) return; // Già gestito come click lungo
+    
     const now = Date.now();
-    if (now - lastShortTs < DOUBLE_MS) {
-      lastShortTs = 0;
-      // double pinch -> pause/resume or start
-      if (!running) start();
-      else pause();
+    const clickInterval = now - lastClickTime;
+    
+    if (clickInterval < DOUBLE_DELAY) {
+      // DOPPIO CLICK RILEVATO -> Gestisce la Pausa
+      lastClickTime = 0; 
+      if (!running) {
+        start();
+      } else {
+        togglePause();
+      }
+      if(e) e.preventDefault();
       return;
     }
-    lastShortTs = now;
-    // delay a hair to see if a double comes in
+    
+    lastClickTime = now;
+
+    // Aspetta per verificare se si tratta di un singolo o doppio click
     setTimeout(() => {
-      if (lastShortTs !== now) return;            // a double consumed it
-      lastShortTs = 0;
-      if (!running) { start(); return; }
-      if (paused)   { pause(false); return; }
-      turnRight();                                // single pinch -> right
-    }, DOUBLE_MS);
-  }
-  function onPressCancel() {
-    clearTimeout(longTimer);
-    pressLongFired = false;
+      if (lastClickTime !== now) return; // È diventato un doppio click, esci
+      lastClickTime = 0;
+      
+      if (!running) return;
+      if (paused) {
+        togglePause(); // Se è in pausa, un click singolo riprende
+      } else {
+        turnRight(); // Altrimenti gira a destra
+      }
+    }, DOUBLE_DELAY);
   }
 
-  // Pointer events cover mouse + touch + pen + (most likely) neural-band webview clicks
-  canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); onPressStart(); }, { passive:false });
-  canvas.addEventListener('pointerup',   (e) => { e.preventDefault(); onPressEnd();   }, { passive:false });
-  canvas.addEventListener('pointercancel', onPressCancel);
-  canvas.addEventListener('pointerleave',  onPressCancel);
+  // Intercettazione nativa sul canvas sia per tocchi che per click simulati dal bracciale
+  canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); handleActionStart(); }, { passive:false });
+  canvas.addEventListener('pointerup',   (e) => { e.preventDefault(); handleActionEnd(e); }, { passive:false });
 
-  // Whole-window click fallback (some webviews don't fire pointer events on canvas)
-  // Excludes the on-screen pad + start button which have their own handlers.
+  // Fallback globale sul documento per click sintetici inviati dal Webview della banda
   document.addEventListener('click', (e) => {
-    if (e.target.closest('#pad') || e.target.closest('#card')) return;
-    // synthesize a tap if pointerup didn't fire (some webviews)
-    if (!pressTs || Date.now() - pressTs > 800) {
-      onPressStart();
-      setTimeout(onPressEnd, 10);
-    }
+    if (e.target.closest('#pad') || e.target.closest('#card') || e.target === startBtn) return;
+    handleActionStart();
+    setTimeout(() => handleActionEnd(e), 20);
   });
 
-  // Keyboard:
-  //   Space            -> right (pinch equivalent)
-  //   Shift+Space / L  -> left  (long-pinch equivalent)
-  //   P / double-Space -> pause (double-pinch equivalent)
-  //   Arrows / WASD    -> absolute direction (desktop convenience)
-  //   Enter            -> start when on overlay
-  const ABS = {
-    ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right',
-    w:'up', s:'down', a:'left', d:'right', W:'up', S:'down', A:'left', D:'right',
-  };
+  // Tastiera PC desktop
   window.addEventListener('keydown', (e) => {
     if (e.repeat) return;
     if (e.code === 'Space') {
       e.preventDefault();
       if (!running) { start(); return; }
-      if (e.shiftKey) { turnLeft(); return; }
-      turnRight(); return;
+      // Simula doppio spazio veloce per la pausa da tastiera, oppure usa direttamente 'P'
+      togglePause(); 
+      return;
     }
-    if (e.key === 'p' || e.key === 'P') { e.preventDefault(); pause(); return; }
-    if (e.key === 'l' || e.key === 'L') { e.preventDefault(); if (running && !paused) turnLeft(); return; }
+    if (e.key === 'p' || e.key === 'P') { e.preventDefault(); togglePause(); return; }
     if (e.key === 'Enter' && !running) { start(); return; }
+    
+    const ABS = { ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right', w:'up', s:'down', a:'left', d:'right' };
     const d = ABS[e.key]; if (d) { setDirAbs(d); e.preventDefault(); }
   });
 
-  // On-screen pad (desktop / phone preview)
+  // Pad virtuale
   document.getElementById('pad').addEventListener('click', (e) => {
     const t = e.target.closest('button'); if (!t) return;
     if (t.dataset.dir) setDirAbs(t.dataset.dir);
-    else if (t.dataset.act === 'pause') pause();
+    else if (t.dataset.act === 'pause') togglePause();
   });
 
-  startBtn.addEventListener('click', () => {
-    if (running && paused) { pause(false); }
+  startBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (running && paused) { togglePause(); }
     else { start(); }
   });
 
-  // init
+  // Inizializzazione
   loadBest();
   resize();
   reset();
   draw();
-  showCard('SNAKE', 'Arrows / WASD / Swipe to steer. Space to pause.', 'START');
+  showCard('SNAKE', 'Fai doppio click/pinch per iniziare o mettere in pausa.', 'START');
 })();
 </script>
 </body>
