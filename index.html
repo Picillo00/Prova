@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <title>Browser a freccia</title>
+  <style>
+    :root {
+      --bg: #000; --fg: #fff; --accent: #39ff14;
+    }
+    * { box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
+    body, html {
+      margin:0; padding:0; height:100%; background:var(--bg); color:var(--fg);
+      font-family: -apple-system, sans-serif; overflow:hidden; touch-action:none;
+    }
+    #wrap {
+      display:flex; flex-direction:column; height:100%; padding:8px;
+    }
+    #url-bar {
+      background:#111; padding:8px; border-radius:6px; margin-bottom:8px;
+      font-size:14px; color:#aaa; text-align:center; border:1px solid #222;
+    }
+    #grid {
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:8px;
+      flex-grow:1;
+      align-content:start;
+    }
+    .tile {
+      background:#1a1a1a;
+      border:1px solid #333;
+      border-radius:10px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      padding:10px 4px;
+      transition:0.1s;
+      text-align:center;
+      font-size:13px;
+      color:#ccc;
+    }
+    .tile.selected {
+      background:var(--accent);
+      color:#000;
+      border-color:#fff;
+      transform:scale(1.05);
+      font-weight:bold;
+    }
+    .tile .icon { font-size:28px; margin-bottom:4px; }
+    #instructions {
+      font-size:10px; color:#555; text-align:center; margin-top:6px;
+    }
+  </style>
+</head>
+<body>
+<div id="wrap">
+  <div id="url-bar">🌐 Browser a freccia</div>
+  <div id="grid"></div>
+  <div id="instructions">←↑↓→ Muovi (tieni premuto per accelerare) &nbsp;|&nbsp; Enter: Apri</div>
+</div>
+
+<script>
+(() => {
+  // Siti predefiniti (nome, URL, emoji)
+  const sites = [
+    { name:'Google', url:'https://www.google.com', icon:'🔍' },
+    { name:'YouTube', url:'https://www.youtube.com', icon:'▶️' },
+    { name:'Wikipedia', url:'https://it.wikipedia.org', icon:'📚' },
+    { name:'WhatsApp', url:'https://web.whatsapp.com', icon:'💬' },
+    { name:'Gmail', url:'https://mail.google.com', icon:'📧' },
+    { name:'Maps', url:'https://www.google.com/maps', icon:'🗺️' },
+    { name:'Twitter', url:'https://twitter.com', icon:'🐦' },
+    { name:'Instagram', url:'https://www.instagram.com', icon:'📷' },
+    { name:'Reddit', url:'https://www.reddit.com', icon:'🤖' },
+    { name:'Netflix', url:'https://www.netflix.com', icon:'🎬' },
+    { name:'Spotify', url:'https://open.spotify.com', icon:'🎵' },
+    { name:'Amazon', url:'https://www.amazon.it', icon:'🛒' },
+    { name:'Traduttore', url:'https://translate.google.com', icon:'🌍' },
+    { name:'Meteo', url:'https://www.ilmeteo.it', icon:'☀️' },
+    { name:'News', url:'https://news.google.com', icon:'📰' },
+    { name:'Calcolatrice', url:'https://www.google.com/search?q=calcolatrice', icon:'🧮' },
+  ];
+
+  const cols = 4;
+  const total = sites.length;
+  let currentIndex = 0;
+
+  const grid = document.getElementById('grid');
+  const urlBar = document.getElementById('url-bar');
+
+  // Disegna la griglia
+  function renderGrid() {
+    grid.innerHTML = '';
+    sites.forEach((site, idx) => {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.dataset.index = idx;
+      tile.innerHTML = `<span class="icon">${site.icon}</span><span>${site.name}</span>`;
+      if (idx === currentIndex) tile.classList.add('selected');
+      tile.addEventListener('click', () => {
+        setSelection(idx);
+        openSelected();
+      });
+      grid.appendChild(tile);
+    });
+  }
+
+  function updateSelection() {
+    const prev = document.querySelector('.tile.selected');
+    if (prev) prev.classList.remove('selected');
+    const next = document.querySelector(`.tile[data-index="${currentIndex}"]`);
+    if (next) next.classList.add('selected');
+  }
+
+  function setSelection(idx) {
+    currentIndex = idx;
+    updateSelection();
+  }
+
+  function moveSelection(dx, dy) {
+    const row = Math.floor(currentIndex / cols);
+    const col = currentIndex % cols;
+    let newRow = row + dy;
+    let newCol = col + dx;
+
+    // Wrap orizzontale
+    if (newCol < 0) newCol = cols - 1;
+    if (newCol >= cols) newCol = 0;
+    // Wrap verticale
+    const totalRows = Math.ceil(total / cols);
+    if (newRow < 0) newRow = totalRows - 1;
+    if (newRow >= totalRows) newRow = 0;
+
+    let newIndex = newRow * cols + newCol;
+    // Se l'ultima riga non è piena, ripiega sull'ultimo elemento
+    if (newIndex >= total) newIndex = total - 1;
+    if (newIndex < 0) newIndex = 0;
+
+    setSelection(newIndex);
+  }
+
+  function openSelected() {
+    const site = sites[currentIndex];
+    urlBar.textContent = `🌐 Aprendo ${site.name}...`;
+    // Apre il link in una nuova finestra (o stessa, a seconda del browser)
+    // Usiamo window.location per sicurezza
+    window.location.href = site.url;
+  }
+
+  // Gestione tasti con accelerazione
+  const keyState = {
+    ArrowUp: false,
+    ArrowDown: false,
+    ArrowLeft: false,
+    ArrowRight: false,
+  };
+
+  let moveInterval = null;
+  const INITIAL_DELAY = 280;  // ms prima di iniziare a ripetere
+  const REPEAT_RATE = 60;     // ms tra un movimento e l'altro (molto veloce)
+  let currentDirection = null;
+
+  function startMoving(direction) {
+    if (moveInterval) return;
+    currentDirection = direction;
+    // Esegue subito il primo movimento
+    moveSelection(
+      direction === 'ArrowRight' ? 1 : direction === 'ArrowLeft' ? -1 : 0,
+      direction === 'ArrowDown' ? 1 : direction === 'ArrowUp' ? -1 : 0
+    );
+    // Poi imposta l'intervallo rapido dopo un breve ritardo
+    moveInterval = setInterval(() => {
+      if (currentDirection) {
+        moveSelection(
+          currentDirection === 'ArrowRight' ? 1 : currentDirection === 'ArrowLeft' ? -1 : 0,
+          currentDirection === 'ArrowDown' ? 1 : currentDirection === 'ArrowUp' ? -1 : 0
+        );
+      }
+    }, REPEAT_RATE);
+  }
+
+  function stopMoving() {
+    if (moveInterval) {
+      clearInterval(moveInterval);
+      moveInterval = null;
+    }
+    currentDirection = null;
+  }
+
+  window.addEventListener('keydown', (e) => {
+    const key = e.key;
+    if (key in keyState) {
+      e.preventDefault();
+      if (!keyState[key]) {
+        keyState[key] = true;
+        startMoving(key);
+      }
+    } else if (key === 'Enter') {
+      e.preventDefault();
+      openSelected();
+    }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    const key = e.key;
+    if (key in keyState) {
+      e.preventDefault();
+      keyState[key] = false;
+      // Se nessuna freccia è premuta, ferma il movimento
+      if (!Object.values(keyState).some(v => v)) {
+        stopMoving();
+      } else {
+        // Se c'è ancora qualche tasto premuto, aggiorna la direzione
+        const active = Object.entries(keyState).find(([k,v]) => v);
+        if (active) {
+          currentDirection = active[0];
+        }
+      }
+    }
+  });
+
+  // Inizializza
+  renderGrid();
+  window.focus();
+})();
+</script>
+</body>
+</html>
