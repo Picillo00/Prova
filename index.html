@@ -249,6 +249,13 @@
       return `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     }
 
+    function getTopRightHeader() {
+      const timestamp = getCurrentTimestamp();
+      const targetWidth = 75; // Larghezza fissa della riga per allineare a destra senza andare a capo
+      const padding = Math.max(2, targetWidth - timestamp.length);
+      return " ".repeat(padding) + timestamp + "\n";
+    }
+
     // ==========================================
     // SEZIONE DISCORD
     // ==========================================
@@ -489,7 +496,7 @@
       } else if (activeApp === 'DISCORD') content = updateDiscordDisplayContent();
         else if (activeApp === 'NTFY') content = updateNtfyDisplayContent();
 
-      content = `                                                                             ${getCurrentTimestamp()}\n` + content;
+      content = getTopRightHeader() + content;
       const lines = content.split('\n'); if (lines.length > 10) content = lines.slice(0, 10).join('\n');
       document.getElementById('display').innerText = content;
     }
