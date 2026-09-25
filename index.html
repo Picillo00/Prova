@@ -489,8 +489,9 @@
       return content;
     }
 
-    async function sendNtfyMessage(content: string) {
+    async function sendNtfyMessage(content) {
       if (!content.trim()) return;
+      // Fallback: se NTFY_TOPIC_TX non è configurato, usa NTFY_TOPIC_RX
       const topicToUse = NTFY_TOPIC_TX || NTFY_TOPIC_RX;
       if (!topicToUse) {
         ntfyHistory.unshift("[ERRORE] Topic Ntfy non configurato!");
@@ -499,34 +500,25 @@
         updateMainDisplay();
         return;
       }
-      
       try {
-        const response = await fetch('https://ntfy.sh/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            topic: topicToUse, 
-            message: content, 
-            title: 'Amore mio 💛🩵 (Occhiali)' 
-          })
+        const titleEncoded = encodeURIComponent('Amore mio 💛🩵 (Occhiali)');
+        const response = await fetch(`https://ntfy.sh/${topicToUse}?title=${titleEncoded}`, { 
+          method: 'POST', 
+          body: content 
         });
-      
-        if (!response.ok) {
-          const errDetail = await response.text().catch(() => '');
-          throw new Error(`HTTP ${response.status} ${errDetail}`.trim());
-        }
-      
-        const timeStr = formatDiscordTime(new Date().toISOString());
-        ntfyHistory.unshift(`[${timeStr}] Tu: ${content}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const timeStr = formatDiscordTime(new Date().toISOString()); 
+        const wrappedLines = wrapTextToWidth(`Tu: ${content}`, TARGET_WIDTH);
+        wrappedLines.forEach(l => ntfyHistory.unshift(`[${timeStr}] ${l}`));
         if (ntfyState === 'CHAT_NAV') { 
           ntfyNavIndex = 0; 
           updateNtfyScrollOffset(); 
           updateMainDisplay(); 
         }
-      } catch (e: any) { 
+      } catch (e) { 
         console.error("Errore di rete invio ntfy:", e); 
-        // Mostra l'errore esatto direttamente sulla chat degli occhiali
-        ntfyHistory.unshift(`[ERRORE] ${e.message || 'Invio fallito'}`);
+        ntfyHistory.unshift(`[ERRORE] Invio Ntfy fallito`);
         ntfyNavIndex = 0;
         updateNtfyScrollOffset();
         updateMainDisplay();
