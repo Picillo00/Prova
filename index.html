@@ -19,7 +19,6 @@
       padding: 15px;
     }
     
-    /* HUD PRINCIPALE PULITO (Senza bordi o sfondi verdi) */
     #hud-container {
       width: 100%;
       height: 100%;
@@ -39,7 +38,6 @@
       flex-grow: 1;
     }
 
-    /* STILE SCHERMATA DI CONFIGURAZIONE */
     #setup-container {
       display: none;
       flex-direction: column;
@@ -104,24 +102,23 @@
   </div>
 
   <script>
-	// ==========================================
-	// SALVATAGGIO AUTOMATICO DA URL (LINK MAGICO)
-	// ==========================================
-	const urlParams = new URLSearchParams(window.location.search);
-	if (urlParams.has('bot_token')) {
-	  localStorage.setItem('DISCORD_BOT_TOKEN', urlParams.get('bot_token'));
-	  localStorage.setItem('DISCORD_CHANNEL_ID', urlParams.get('channel_id'));
-	  localStorage.setItem('DISCORD_WEBHOOK_URL', urlParams.get('webhook_url'));
-	  localStorage.setItem('NTFY_TOPIC_RX', urlParams.get('ntfy_rx'));
-	  localStorage.setItem('NTFY_TOPIC_TX', urlParams.get('ntfy_tx'));
-	  
-	  window.history.replaceState({}, document.title, window.location.pathname);
-	  location.reload();
-	}
+    const TARGET_WIDTH = 50; // Limite perfetto dello schermo impostato
 
     // ==========================================
-    // CREDENZIALI DA LOCALSTORAGE
+    // SALVATAGGIO AUTOMATICO DA URL (LINK MAGICO)
     // ==========================================
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('bot_token')) {
+      localStorage.setItem('DISCORD_BOT_TOKEN', urlParams.get('bot_token'));
+      localStorage.setItem('DISCORD_CHANNEL_ID', urlParams.get('channel_id'));
+      localStorage.setItem('DISCORD_WEBHOOK_URL', urlParams.get('webhook_url'));
+      localStorage.setItem('NTFY_TOPIC_RX', urlParams.get('ntfy_rx'));
+      localStorage.setItem('NTFY_TOPIC_TX', urlParams.get('ntfy_tx'));
+      
+      window.history.replaceState({}, document.title, window.location.pathname);
+      location.reload();
+    }
+
     const BOT_TOKEN = localStorage.getItem('DISCORD_BOT_TOKEN') || "";
     const CHANNEL_ID = localStorage.getItem('DISCORD_CHANNEL_ID') || "";
     const WEBHOOK_URL = localStorage.getItem('DISCORD_WEBHOOK_URL') || "";
@@ -135,6 +132,34 @@
       localStorage.setItem('NTFY_TOPIC_RX', document.getElementById('in-ntfy-rx').value.trim());
       localStorage.setItem('NTFY_TOPIC_TX', document.getElementById('in-ntfy-tx').value.trim());
       location.reload(); 
+    }
+
+    // ==========================================
+    // FUNZIONE DI WRAP DEL TESTO A TARGET_WIDTH
+    // ==========================================
+    function wrapTextToWidth(text, maxLen) {
+      if (!text) return [""];
+      let words = text.split(' ');
+      let lines = [];
+      let currentLine = "";
+
+      for (let word of words) {
+        if ((currentLine + " " + word).trim().length <= maxLen) {
+          currentLine = currentLine ? currentLine + " " + word : word;
+        } else {
+          if (currentLine) lines.push(currentLine);
+          if (word.length > maxLen) {
+            for (let i = 0; i < word.length; i += maxLen) {
+              lines.push(word.substr(i, maxLen));
+            }
+            currentLine = "";
+          } else {
+            currentLine = word;
+          }
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+      return lines;
     }
 
     // ==========================================
@@ -157,19 +182,14 @@
           .filter(p => !/[jkwxy]/.test(p))
           .sort((a, b) => a.length - b.length);
       } catch (error) {
-        console.error("Errore caricamento dizionario:", error);
         ITALIAN_WORDS = [
-          "amore", "prondoo", "francoo", "macchina", "caserma", 
+          "amore", "pronto", "franco", "macchina", "caserma", 
           "basilico", "scendere", "correre", "ponte", "arrivo", 
-          "partito", "minuti", "doccia", "stasera", "giochiamo",
-          "faccio", "scocciato", "grazie"
+          "partito", "minuti", "doccia", "stasera", "giochiamo"
         ].sort((a, b) => a.length - b.length);
       }
     }
 
-    // ==========================================
-    // STATO GLOBALE E MORSE
-    // ==========================================
     let activeApp = 'HOME';
     let homeIndex = 0;
 
@@ -211,11 +231,11 @@
       let content = `Testo: ${displayDraft}\n`;
       if (suggestionLine) content += suggestionLine;
       content += `Codice: ${buffer}_\n`;
-      content += `| A .- | B -... | C -.-. | D -.. | E . | F ..-. | G --. | H .... | I .. |\n`;
-      content += `| J .--- | K -.- | L .-.. | M -- | N -. | O --- | P .--. | Q --.- |\n`;
-      content += `| R .-. | S ... | T - | U ..- | V ...- | W .-- | X -..- | Y -.-- | Z --.. |\n`;
-      content += `| 0 ----- | 1 .---- | 2 ..--- | 3 ...-- | 4 ....- | 5 ..... | 6 -.... |\n`;
-      content += `| 7 --... | 8 ---.. | 9 ----. | DEL -.-.- | INV .-.- |\n`;
+      content += `| A .- | B -... | C -.-. | D -.. | E . |\n`;
+      content += `| F ..-. | G --. | H .... | I .. | J .--- |\n`;
+      content += `| K -.- | L .-.. | M -- | N -. | O --- |\n`;
+      content += `| P .--. | Q --.- | R .-. | S ... | T - |\n`;
+      content += `| U ..- | V ...- | W .-- | X -..- | Y -.-- | Z --.. |\n`;
       content += `[Su] Conferma/Spazio`;
       return content;
     }
@@ -228,11 +248,11 @@
     ];
 
     function renderFullKeyboard(items, currentIndex) {
-      let result = ""; let rowStr = ""; const cols = 8;
+      let result = ""; let rowStr = ""; const cols = 6;
       for(let i = 0; i < items.length; i++) {
         let disp = items[i];
         if (disp === "Spazio") disp = "SPZ"; else if (disp === "Cancella") disp = "DEL"; else if (disp === "Invio") disp = "INV";
-        let cell = (i === currentIndex) ? (disp.length === 1 ? ` >${disp}< ` : `>${disp}<`) : (disp.length === 1 ? `  ${disp}  ` : ` ${disp} `);
+        let cell = (i === currentIndex) ? ` >${disp}< ` : `  ${disp}  `;
         rowStr += cell;
         if ((i + 1) % cols === 0 || i === items.length - 1) { result += rowStr.trimEnd() + "\n"; rowStr = ""; }
       }
@@ -251,8 +271,7 @@
 
     function getTopRightHeader() {
       const timestamp = getCurrentTimestamp();
-      const targetWidth = 50; // Larghezza fissa della riga per allineare a destra senza andare a capo
-      const padding = Math.max(2, targetWidth - timestamp.length);
+      const padding = Math.max(2, TARGET_WIDTH - timestamp.length);
       return " ".repeat(padding) + timestamp + "\n";
     }
 
@@ -276,16 +295,14 @@
     let heartbeatInterval = null;
     let activeRecognition = null;
     let discordQuickScrollOffset = 0;
-    const MAX_VISIBLE_QUICK_DISCORD = 8;
+    const MAX_VISIBLE_QUICK_DISCORD = 7;
 
     function getDiscordQuickReplies() {
       const data = localStorage.getItem('discord_quick_replies');
       return data ? JSON.parse(data) : [
         'aoo zaa', 'come stai, bene tu, bene ciao', 'stasera giochiamo?', 
         'che fai?', 'dove sei?', 'ciao', 'sono da rita :/' , 'za' ,'minuti', 
-        'aoooo zaa buongiornooooo❤️❤️', 'si', 'no', 'prondo', 
-        'franco', 'za arrivo a casa, faccio la doccia e ci sono', 
-        'faccio la doccia za e ci sono', 'za arrivo a casa e ci sono'
+        'aoooo zaa buongiornooooo❤️❤️', 'si', 'no', 'pronto'
       ];
     }
 
@@ -299,8 +316,10 @@
     function updateDiscordDisplayContent() {
       let content = "";
       if (discordState === 'CHAT_NAV') {
-        content = `----Discord gruppo RAY-BAN META----\n`;
-        const total = chatHistory.length; const start = discordScrollOffset; const end = Math.min(total, start + MAX_VISIBLE_DISCORD);
+        content = `----Discord Gruppo Ray-Ban Meta----\n`;
+        const total = chatHistory.length; 
+        const start = discordScrollOffset; 
+        const end = Math.min(total, start + MAX_VISIBLE_DISCORD);
         for (let i = start; i < end; i++) content += `${chatHistory[i]}\n`;
         const empty = MAX_VISIBLE_DISCORD - (end - start);
         for (let i = 0; i < empty; i++) content += "\n";
@@ -312,13 +331,22 @@
         content += (discordReplyMenuIndex === 2 ? "> " : "  ") + "Tastiera\n";
         content += (discordReplyMenuIndex === 3 ? "> " : "  ") + "Morse\n";
       }
-      else if (discordState === 'VOCALE') content = `--- VOCALE ---\n${discordDraft || "In ascolto..."}\n\n[Click] Ferma\n[Doppio click = Indietro]`;
-      else if (discordState === 'VOCALE_CONFERMA') content = `--- INVIA? ---\n${discordDraft}\n\n[Click] Invia\n[Swipe] Ripeti\n[Doppio click = Indietro]`;
+      else if (discordState === 'VOCALE') {
+        const wrappedDraft = wrapTextToWidth(discordDraft || "In ascolto...", TARGET_WIDTH);
+        content = `--- VOCALE ---\n` + wrappedDraft.join('\n') + `\n\n[Click] Ferma\n[Doppio click = Indietro]`;
+      }
+      else if (discordState === 'VOCALE_CONFERMA') {
+        const wrappedDraft = wrapTextToWidth(discordDraft, TARGET_WIDTH);
+        content = `--- INVIA? ---\n` + wrappedDraft.join('\n') + `\n\n[Click] Invia\n[Doppio click = Indietro]`;
+      }
       else if (discordState === 'VELOCI') {
         const replies = getDiscordQuickReplies(); const start = discordQuickScrollOffset; const end = Math.min(replies.length, start + MAX_VISIBLE_QUICK_DISCORD);
         for (let i = start; i < end; i++) { const pointer = (i === selectedDiscordQuickIndex) ? "> " : "  "; content += `${pointer}${replies[i]}\n`; }
       }
-      else if (discordState === 'VELOCI_CONFERMA') content = `--- CONFERMA INVIO ---\n"${pendingDiscordQuickReply}"\n\n[Click] Invia\n[Doppio click = Indietro]`;
+      else if (discordState === 'VELOCI_CONFERMA') {
+        const wrappedReply = wrapTextToWidth(`"${pendingDiscordQuickReply}"`, TARGET_WIDTH);
+        content = `--- CONFERMA INVIO ---\n` + wrappedReply.join('\n') + `\n\n[Click] Invia\n[Doppio click = Indietro]`;
+      }
       else if (discordState === 'TASTIERA') {
         let displayDraft = discordDraft + "_"; if (displayDraft.length > 25) displayDraft = "..." + displayDraft.slice(-22);
         content = `Testo: ${displayDraft}\n` + renderFullKeyboard(KEYBOARD_ITEMS, discordKeyboardIndex);
@@ -331,7 +359,9 @@
       if (!WEBHOOK_URL || !content.trim()) return;
       try {
         await fetch(WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: content, username: "Davide (Occhiali)" }) });
-        const timeStr = formatDiscordTime(new Date().toISOString()); chatHistory.unshift(`[${timeStr}] Tu: ${content}`);
+        const timeStr = formatDiscordTime(new Date().toISOString()); 
+        const wrappedLines = wrapTextToWidth(`Tu: ${content}`, TARGET_WIDTH);
+        wrappedLines.forEach(l => chatHistory.unshift(`[${timeStr}] ${l}`));
         if (discordState === 'CHAT_NAV') { chatNavIndex = 0; updateDiscordScrollOffset(); updateMainDisplay(); }
       } catch (e) { console.error("Errore di rete invio:", e); }
     }
@@ -370,8 +400,10 @@
         }
         if (t === 'MESSAGE_CREATE' && d.channel_id === CHANNEL_ID) {
           const isOwnBot = d.author.id === botId; if (d.author.bot && !isOwnBot) return;
-          const sender = isOwnBot ? "Bot" : d.author.username; const timeStr = d.timestamp ? formatDiscordTime(d.timestamp) : formatDiscordTime(new Date().toISOString());
-          chatHistory.unshift(`[${timeStr}] ${sender}: ${d.content}`);
+          const sender = isOwnBot ? "Bot" : d.author.username; 
+          const timeStr = d.timestamp ? formatDiscordTime(d.timestamp) : formatDiscordTime(new Date().toISOString());
+          const wrappedLines = wrapTextToWidth(`${sender}: ${d.content}`, TARGET_WIDTH);
+          wrappedLines.forEach(l => chatHistory.unshift(`[${timeStr}] ${l}`));
           if (activeApp === 'DISCORD' && discordState === 'CHAT_NAV') { if (chatNavIndex === 0 || isOwnBot) chatNavIndex = 0; else chatNavIndex++; updateDiscordScrollOffset(); updateMainDisplay(); }
         }
       };
@@ -380,14 +412,27 @@
     // ==========================================
     // SEZIONE NTFY
     // ==========================================
-    let ntfyState = 'CHAT_NAV'; let ntfyReplyMenuIndex = 0; let ntfyHistory = []; let ntfyNavIndex = 0; let ntfyScrollOffset = 0; const MAX_VISIBLE_NTFY = 7;
-    let selectedNtfyCatIndex = 0; let ntfyCatScrollOffset = 0; let selectedNtfyQuickIndex = 0; let pendingNtfyQuickReply = ""; let ntfyQuickScrollOffset = 0; const MAX_VISIBLE_QUICK_NTFY = 8;
-    let ntfyKeyboardIndex = 0; let ntfyDraft = ""; let ntfyMorseBuffer = ""; let ntfyWs = null;
+    let ntfyState = 'CHAT_NAV'; 
+    let ntfyReplyMenuIndex = 0; 
+    let ntfyHistory = []; 
+    let ntfyNavIndex = 0; 
+    let ntfyScrollOffset = 0; 
+    const MAX_VISIBLE_NTFY = 7;
+    let selectedNtfyCatIndex = 0; 
+    let ntfyCatScrollOffset = 0; 
+    let selectedNtfyQuickIndex = 0; 
+    let pendingNtfyQuickReply = ""; 
+    let ntfyQuickScrollOffset = 0; 
+    const MAX_VISIBLE_QUICK_NTFY = 7;
+    let ntfyKeyboardIndex = 0; 
+    let ntfyDraft = ""; 
+    let ntfyMorseBuffer = ""; 
+    let ntfyWs = null;
 
     function getNtfyQuickCategories() {
       return [
         { categoria: 'Amore', risposte: ['ti amo💛🩵', 'amore', 'ti amo assai assaiii💛🩵', 'bedudina popopo'] },
-        { categoria: 'Affermazioni', risposte: ['sii amoree', 'noo amoree', 'va bene amore mio', 'prondoo', 'francoo', 'io scocciato', 'andare via', 'seii vita miaaa💛🩵', 'bravissimaa amoreee💛🩵', 'sei bellissima amore mio💛🩵'] },
+        { categoria: 'Affermazioni', risposte: ['sii amoree', 'noo amoree', 'va bene amore mio', 'pronto', 'franco', 'io scocciato', 'andare via', 'seii vita miaaa💛🩵', 'bravissimaa amoreee💛🩵', 'sei bellissima amore mio💛🩵'] },
         { categoria: 'Domande', risposte: ['amoooree mioo, che faii ?', 'amoooree mioo, dovee seii ?', 'amoooree mioo, come staii ?', 'amore mio tutto benee ?'] },
         { categoria: 'Macchina', risposte: ['sono partito amoree', 'sono arrivato amoree', 'ho girato per il basilico amoree', 'sono sui giardinetti amoree', 'sono vicino al ponte amoree', 'inizia a scendere amoreee', 'sto cacciando la macchina amoree', "sto mettendo l'acqua per correre amoreee", 'sono vicino new trend amore', 'sono vicino caserma amore', "c'è un po di traffichino amoree", "non c'è traffico godo"] }
       ];
@@ -403,18 +448,26 @@
     function updateNtfyDisplayContent() {
       let content = "";
       if (ntfyState === 'CHAT_NAV') {
-        content = `----NTFY----\n`;
+        content = `----NTFY Chat----\n`;
         const total = ntfyHistory.length; const start = ntfyScrollOffset; const end = Math.min(total, start + MAX_VISIBLE_NTFY);
         for (let i = start; i < end; i++) content += `${ntfyHistory[i]}\n`;
         const empty = MAX_VISIBLE_NTFY - (end - start); for (let i = 0; i < empty; i++) content += "\n";
       }
       else if (ntfyState === 'REPLY_MENU') {
         content = "-NTFY-\n";
-        content += (ntfyReplyMenuIndex === 0 ? "> " : "  ") + "Microfono\n"; content += (ntfyReplyMenuIndex === 1 ? "> " : "  ") + "Chat Veloce\n";
-        content += (ntfyReplyMenuIndex === 2 ? "> " : "  ") + "Tastiera\n"; content += (ntfyReplyMenuIndex === 3 ? "> " : "  ") + "Morse\n";
+        content += (ntfyReplyMenuIndex === 0 ? "> " : "  ") + "Microfono\n"; 
+        content += (ntfyReplyMenuIndex === 1 ? "> " : "  ") + "Chat Veloce\n";
+        content += (ntfyReplyMenuIndex === 2 ? "> " : "  ") + "Tastiera\n"; 
+        content += (ntfyReplyMenuIndex === 3 ? "> " : "  ") + "Morse\n";
       }
-      else if (ntfyState === 'VOCALE') content = `--- VOCALE ---\n${ntfyDraft || "In ascolto..."}\n\n[Click] Ferma\n[Doppio click = Indietro]`;
-      else if (ntfyState === 'VOCALE_CONFERMA') content = `--- INVIA? ---\n${ntfyDraft}\n\n[Click] Invia\n[Swipe] Ripeti\n[Doppio click = Indietro]`;
+      else if (ntfyState === 'VOCALE') {
+        const wrappedDraft = wrapTextToWidth(ntfyDraft || "In ascolto...", TARGET_WIDTH);
+        content = `--- VOCALE ---\n` + wrappedDraft.join('\n') + `\n\n[Click] Ferma\n[Doppio click = Indietro]`;
+      }
+      else if (ntfyState === 'VOCALE_CONFERMA') {
+        const wrappedDraft = wrapTextToWidth(ntfyDraft, TARGET_WIDTH);
+        content = `--- INVIA? ---\n` + wrappedDraft.join('\n') + `\n\n[Click] Invia\n[Doppio click = Indietro]`;
+      }
       else if (ntfyState === 'VELOCI_CAT') {
         const categories = getNtfyQuickCategories(); const start = ntfyCatScrollOffset; const end = Math.min(categories.length, start + MAX_VISIBLE_QUICK_NTFY);
         for (let i = start; i < end; i++) { const pointer = (i === selectedNtfyCatIndex) ? "> " : "  "; content += `${pointer}${categories[i].categoria}\n`; }
@@ -424,7 +477,10 @@
         const replies = activeCategory.risposte; const start = ntfyQuickScrollOffset; const end = Math.min(replies.length, start + MAX_VISIBLE_QUICK_NTFY);
         for (let i = start; i < end; i++) { const pointer = (i === selectedNtfyQuickIndex) ? "> " : "  "; content += `${pointer}${replies[i]}\n`; }
       }
-      else if (ntfyState === 'VELOCI_CONFERMA') content = `--- CONFERMA INVIO ---\n"${pendingNtfyQuickReply}"\n\n[Click] Invia\n[Doppio click = Indietro]`;
+      else if (ntfyState === 'VELOCI_CONFERMA') {
+        const wrappedReply = wrapTextToWidth(`"${pendingNtfyQuickReply}"`, TARGET_WIDTH);
+        content = `--- CONFERMA INVIO ---\n` + wrappedReply.join('\n') + `\n\n[Click] Invia\n[Doppio click = Indietro]`;
+      }
       else if (ntfyState === 'TASTIERA') {
         let displayDraft = ntfyDraft + "_"; if (displayDraft.length > 25) displayDraft = "..." + displayDraft.slice(-22);
         content = `Testo: ${displayDraft}\n` + renderFullKeyboard(KEYBOARD_ITEMS, ntfyKeyboardIndex);
@@ -446,7 +502,8 @@
           body: content 
         });
         const timeStr = formatDiscordTime(new Date().toISOString()); 
-        ntfyHistory.unshift(`[${timeStr}] Tu: ${content}`);
+        const wrappedLines = wrapTextToWidth(`Tu: ${content}`, TARGET_WIDTH);
+        wrappedLines.forEach(l => ntfyHistory.unshift(`[${timeStr}] ${l}`));
         if (ntfyState === 'CHAT_NAV') { 
           ntfyNavIndex = 0; 
           updateNtfyScrollOffset(); 
@@ -458,15 +515,41 @@
     }
 
     function connectToNtfy() {
-      if (!NTFY_TOPIC_RX) { ntfyHistory = ["ERRORE: Topic Ntfy mancanti."]; updateMainDisplay(); return; }
+      if (!NTFY_TOPIC_RX) { 
+        ntfyHistory = ["ERRORE: Topic Ntfy mancanti."]; 
+        updateMainDisplay(); 
+        return; 
+      }
+      if (ntfyWs) {
+        try { ntfyWs.close(); } catch(e) {}
+      }
+      
       ntfyWs = new WebSocket(`wss://ntfy.sh/${NTFY_TOPIC_RX}/ws`);
+      
       ntfyWs.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.event === 'message') {
-          const timeStr = formatDiscordTime(new Date().toISOString()); ntfyHistory.unshift(`[${timeStr}] Lei: ${data.message}`);
-          if (activeApp === 'NTFY' && ntfyState === 'CHAT_NAV') { ntfyNavIndex = 0; updateNtfyScrollOffset(); updateMainDisplay(); }
+        try {
+          const data = JSON.parse(event.data);
+          if (data.event === 'message' || data.message) {
+            const msgText = data.message || "";
+            const timeStr = formatDiscordTime(new Date().toISOString()); 
+            const wrappedLines = wrapTextToWidth(`Lei: ${msgText}`, TARGET_WIDTH);
+            wrappedLines.forEach(l => ntfyHistory.unshift(`[${timeStr}] ${l}`));
+            
+            if (activeApp === 'NTFY' && ntfyState === 'CHAT_NAV') { 
+              ntfyNavIndex = 0; 
+              updateNtfyScrollOffset(); 
+              updateMainDisplay(); 
+            }
+          }
+        } catch (err) {
+          console.error("Errore parsing messaggio Ntfy:", err);
         }
       };
+
+      ntfyWs.onclose = () => {
+        setTimeout(connectToNtfy, 4000);
+      };
+
       ntfyHistory = ["Connesso a Ntfy!"];
     }
 
@@ -644,28 +727,16 @@
       }
     }
 
-    // ==========================================
-    // MAPPA TASTIERA FISICA (OTTIMIZZATA PER NEURAL BAND)
-    // ==========================================
     window.addEventListener('keydown', (e) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
         e.preventDefault(); 
       }
-      
-      if (e.key === 'ArrowUp') {
-        handleInputEvent('UP');
-      } else if (e.key === 'ArrowDown') {
-        handleInputEvent('DOWN');
-      } else if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') {
-        handleInputEvent('CLICK');
-      } else if (e.key === 'ArrowLeft' || e.key === 'Backspace' || e.key === 'Escape') {
-        handleInputEvent('DOUBLE_CLICK');
-      }
+      if (e.key === 'ArrowUp') handleInputEvent('UP');
+      else if (e.key === 'ArrowDown') handleInputEvent('DOWN');
+      else if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') handleInputEvent('CLICK');
+      else if (e.key === 'ArrowLeft' || e.key === 'Backspace' || e.key === 'Escape') handleInputEvent('DOUBLE_CLICK');
     });
 
-    // ==========================================
-    // INIZIALIZZAZIONE CON CONTROLLO CREDENZIALI
-    // ==========================================
     async function initLauncher() {
       if (!BOT_TOKEN || !NTFY_TOPIC_RX) {
         document.getElementById('hud-container').style.display = 'none';
