@@ -12,23 +12,21 @@
       font-family: 'Courier New', Courier, monospace;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      align-items: flex-start;
+      justify-content: flex-start;
       min-height: 100vh;
       overflow: hidden;
-      padding: 10px;
+      padding: 15px;
     }
     
-    /* STILE HUD PRINCIPALE */
+    /* HUD PRINCIPALE PULITO (Senza bordi o sfondi verdi) */
     #hud-container {
       width: 100%;
-      max-width: 600px;
-      height: 320px;
-      border: 1px solid #00ff66;
-      border-radius: 8px;
-      padding: 12px;
-      background: rgba(0, 20, 0, 0.9);
-      box-shadow: 0 0 15px rgba(0, 255, 102, 0.2);
+      height: 100%;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
@@ -40,31 +38,8 @@
       overflow: hidden;
       flex-grow: 1;
     }
-    
-    /* PULSANTI DI CONTROLLO */
-    .controls {
-      margin-top: 15px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      width: 100%;
-      max-width: 600px;
-    }
-    .btn {
-      background: #111;
-      color: #00ff66;
-      border: 1px solid #00ff66;
-      padding: 12px;
-      font-size: 14px;
-      font-family: inherit;
-      border-radius: 6px;
-      cursor: pointer;
-      text-align: center;
-      user-select: none;
-    }
-    .btn:active { background: #00ff66; color: #000; }
 
-    /* STILE SCHERMATA DI CONFIGURAZIONE (Visibile solo se mancano i token) */
+    /* STILE SCHERMATA DI CONFIGURAZIONE */
     #setup-container {
       display: none;
       flex-direction: column;
@@ -128,27 +103,20 @@
     <div id="display">Inizializzazione Launcher...</div>
   </div>
 
-  <div class="controls" id="controls-container">
-    <button class="btn" onclick="handleInputEvent('UP')">▲ SU</button>
-    <button class="btn" onclick="handleInputEvent('DOWN')">▼ GIÙ</button>
-    <button class="btn" onclick="handleInputEvent('CLICK')">OK (Click)</button>
-    <button class="btn" onclick="handleInputEvent('DOUBLE_CLICK')">INDIETRO (2x Click)</button>
-  </div>
-
   <script>
 	// ==========================================
 	// SALVATAGGIO AUTOMATICO DA URL (LINK MAGICO)
 	// ==========================================
 	const urlParams = new URLSearchParams(window.location.search);
 	if (urlParams.has('bot_token')) {
-	localStorage.setItem('DISCORD_BOT_TOKEN', urlParams.get('bot_token'));
-	localStorage.setItem('DISCORD_CHANNEL_ID', urlParams.get('channel_id'));
-	localStorage.setItem('DISCORD_WEBHOOK_URL', urlParams.get('webhook_url'));
-	localStorage.setItem('NTFY_TOPIC_RX', urlParams.get('ntfy_rx'));
-	localStorage.setItem('NTFY_TOPIC_TX', urlParams.get('ntfy_tx'));
-	
-	window.history.replaceState({}, document.title, window.location.pathname);
-	location.reload();
+	  localStorage.setItem('DISCORD_BOT_TOKEN', urlParams.get('bot_token'));
+	  localStorage.setItem('DISCORD_CHANNEL_ID', urlParams.get('channel_id'));
+	  localStorage.setItem('DISCORD_WEBHOOK_URL', urlParams.get('webhook_url'));
+	  localStorage.setItem('NTFY_TOPIC_RX', urlParams.get('ntfy_rx'));
+	  localStorage.setItem('NTFY_TOPIC_TX', urlParams.get('ntfy_tx'));
+	  
+	  window.history.replaceState({}, document.title, window.location.pathname);
+	  location.reload();
 	}
 
     // ==========================================
@@ -459,12 +427,27 @@
     }
 
     async function sendNtfyMessage(content) {
-      if (!content.trim() || !NTFY_TOPIC_TX) return;
+      if (!content.trim()) return;
+      if (!NTFY_TOPIC_TX) {
+        console.error("ERRORE: NTFY_TOPIC_TX non è configurato!");
+        return;
+      }
       try {
-        await fetch('https://ntfy.sh/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic: NTFY_TOPIC_TX, message: content, title: 'Amore mio💛🩵(Occhiali)' }) });
-        const timeStr = formatDiscordTime(new Date().toISOString()); ntfyHistory.unshift(`[${timeStr}] Tu: ${content}`);
-        if (ntfyState === 'CHAT_NAV') { ntfyNavIndex = 0; updateNtfyScrollOffset(); updateMainDisplay(); }
-      } catch (e) { console.error("Errore di rete invio ntfy:", e); }
+        const titleEncoded = encodeURIComponent('Amore mio 💛🩵 (Occhiali)');
+        await fetch(`https://ntfy.sh/${NTFY_TOPIC_TX}?title=${titleEncoded}`, { 
+          method: 'POST', 
+          body: content 
+        });
+        const timeStr = formatDiscordTime(new Date().toISOString()); 
+        ntfyHistory.unshift(`[${timeStr}] Tu: ${content}`);
+        if (ntfyState === 'CHAT_NAV') { 
+          ntfyNavIndex = 0; 
+          updateNtfyScrollOffset(); 
+          updateMainDisplay(); 
+        }
+      } catch (e) { 
+        console.error("Errore di rete invio ntfy:", e); 
+      }
     }
 
     function connectToNtfy() {
@@ -658,7 +641,6 @@
     // MAPPA TASTIERA FISICA (OTTIMIZZATA PER NEURAL BAND)
     // ==========================================
     window.addEventListener('keydown', (e) => {
-      // Evita lo scroll indesiderato della pagina usando i direzionali
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
         e.preventDefault(); 
       }
@@ -668,10 +650,8 @@
       } else if (e.key === 'ArrowDown') {
         handleInputEvent('DOWN');
       } else if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') {
-        // Swipe Destra o Tap -> Conferma (Click)
         handleInputEvent('CLICK');
       } else if (e.key === 'ArrowLeft' || e.key === 'Backspace' || e.key === 'Escape') {
-        // Swipe Sinistra o Gesto Back -> Indietro (Double Click)
         handleInputEvent('DOUBLE_CLICK');
       }
     });
@@ -682,7 +662,6 @@
     async function initLauncher() {
       if (!BOT_TOKEN || !NTFY_TOPIC_RX) {
         document.getElementById('hud-container').style.display = 'none';
-        document.getElementById('controls-container').style.display = 'none';
         document.getElementById('setup-container').style.display = 'flex';
         return;
       }
