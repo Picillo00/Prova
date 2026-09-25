@@ -501,18 +501,16 @@
         return;
       }
 
-      const url = `https://ntfy.sh/${encodeURIComponent(topicToUse)}`;
-
-      // 1. Prova prima con fetch() in modalità 'cors' standard.
-      //    E' lo stesso identico metodo usato per l'invio a Discord, che sugli
-      //    occhiali funziona regolarmente: la WebView degli occhiali ha
-      //    un'implementazione di XMLHttpRequest meno affidabile di fetch(),
-      //    quindi usiamo fetch come primo tentativo invece che come fallback.
+      // 1. Metodo primario: endpoint JSON di ntfy (POST su https://ntfy.sh/ con
+      //    topic+message nel body). E' lo stesso pattern usato per Discord
+      //    (fetch + JSON) e confermato funzionante sugli occhiali Even Realities G2:
+      //    l'endpoint path-based (POST su https://ntfy.sh/<topic>) risultava
+      //    invece in HTTP 404 nella WebView degli occhiali.
       try {
-        const res = await fetch(url, {
+        const res = await fetch('https://ntfy.sh/', {
           method: 'POST',
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-          body: content
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic: topicToUse, message: content })
         });
         if (res.ok) {
           onNtfySuccess(content);
@@ -522,55 +520,27 @@
           // non facciamo return: proviamo comunque il fallback sotto
         }
       } catch (err) {
-        console.warn('fetch() ntfy fallita, provo fallback XHR/no-cors:', err);
+        console.warn('fetch() JSON ntfy fallita, provo fallback path-based:', err);
       }
 
-      // 2. Fallback A: XMLHttpRequest classico
-      const xhrResult = await new Promise((resolve) => {
-        const xhr = new XMLHttpRequest();
-        try {
-          xhr.open("POST", url, true);
-          xhr.setRequestHeader("Content-Type", "text/plain; charset=utf-8");
-        } catch (e) {
-          resolve({ ok: false, err: e.message || "Eccezione apertura XHR" });
-          return;
-        }
-
-        xhr.onload = function () {
-          if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 0) {
-            resolve({ ok: true });
-          } else {
-            resolve({ ok: false, err: `HTTP ${xhr.status}` });
-          }
-        };
-        xhr.onerror = function () {
-          resolve({ ok: false, err: "Errore rete XHR" });
-        };
-        xhr.ontimeout = function () {
-          resolve({ ok: false, err: "Timeout XHR" });
-        };
-        xhr.timeout = 8000;
-
-        try {
-          xhr.send(content);
-        } catch (e) {
-          resolve({ ok: false, err: e.message || "Eccezione invio XHR" });
-        }
-      });
-
-      if (xhrResult.ok) {
-        onNtfySuccess(content);
-        return true;
-      }
-
-      // 3. Fallback B: fetch in modalità no-cors (risposta opaca, non verificabile,
-      //    ma spesso passa quando il problema è la lettura della risposta CORS)
+      // 2. Fallback: vecchio endpoint path-based, nel caso l'endpoint JSON
+      //    non fosse raggiungibile per qualche motivo di rete.
+      const url = `https://ntfy.sh/${encodeURIComponent(topicToUse)}`;
       try {
-        await fetch(url, { method: 'POST', mode: 'no-cors', body: content });
-        onNtfySuccess(content);
-        return true;
+        const res2 = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          body: content
+        });
+        if (res2.ok) {
+          onNtfySuccess(content);
+          return true;
+        } else {
+          onNtfyFail(`HTTP ${res2.status} ${res2.statusText}`);
+          return false;
+        }
       } catch (err) {
-        onNtfyFail(xhrResult.err || err.message || "Invio fallito su tutti i canali");
+        onNtfyFail(err.message || "Invio fallito su entrambi gli endpoint");
         return false;
       }
     }
