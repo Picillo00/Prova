@@ -141,17 +141,13 @@
 	// ==========================================
 	const urlParams = new URLSearchParams(window.location.search);
 	if (urlParams.has('bot_token')) {
-	// Salva i dati passati nel link direttamente nel dispositivo
 	localStorage.setItem('DISCORD_BOT_TOKEN', urlParams.get('bot_token'));
 	localStorage.setItem('DISCORD_CHANNEL_ID', urlParams.get('channel_id'));
 	localStorage.setItem('DISCORD_WEBHOOK_URL', urlParams.get('webhook_url'));
 	localStorage.setItem('NTFY_TOPIC_RX', urlParams.get('ntfy_rx'));
 	localStorage.setItem('NTFY_TOPIC_TX', urlParams.get('ntfy_tx'));
 	
-	// Pulisce l'URL per sicurezza (rimuove i token dalla barra degli indirizzi)
 	window.history.replaceState({}, document.title, window.location.pathname);
-	
-	// Ricarica l'app
 	location.reload();
 	}
 
@@ -164,14 +160,13 @@
     const NTFY_TOPIC_RX = localStorage.getItem('NTFY_TOPIC_RX') || "";
     const NTFY_TOPIC_TX = localStorage.getItem('NTFY_TOPIC_TX') || "";
 
-    // Funzione per salvare le credenziali dal modulo HTML
     function saveSetup() {
       localStorage.setItem('DISCORD_BOT_TOKEN', document.getElementById('in-bot-token').value.trim());
       localStorage.setItem('DISCORD_CHANNEL_ID', document.getElementById('in-channel-id').value.trim());
       localStorage.setItem('DISCORD_WEBHOOK_URL', document.getElementById('in-webhook-url').value.trim());
       localStorage.setItem('NTFY_TOPIC_RX', document.getElementById('in-ntfy-rx').value.trim());
       localStorage.setItem('NTFY_TOPIC_TX', document.getElementById('in-ntfy-tx').value.trim());
-      location.reload(); // Ricarica la pagina per applicare le variabili
+      location.reload(); 
     }
 
     // ==========================================
@@ -659,19 +654,32 @@
       }
     }
 
-    // MAPPA TASTIERA FISICA
+    // ==========================================
+    // MAPPA TASTIERA FISICA (OTTIMIZZATA PER NEURAL BAND)
+    // ==========================================
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowUp') handleInputEvent('UP');
-      else if (e.key === 'ArrowDown') handleInputEvent('DOWN');
-      else if (e.key === 'Enter' || e.key === ' ') handleInputEvent('CLICK');
-      else if (e.key === 'Backspace' || e.key === 'Escape') handleInputEvent('DOUBLE_CLICK');
+      // Evita lo scroll indesiderato della pagina usando i direzionali
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+        e.preventDefault(); 
+      }
+      
+      if (e.key === 'ArrowUp') {
+        handleInputEvent('UP');
+      } else if (e.key === 'ArrowDown') {
+        handleInputEvent('DOWN');
+      } else if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') {
+        // Swipe Destra o Tap -> Conferma (Click)
+        handleInputEvent('CLICK');
+      } else if (e.key === 'ArrowLeft' || e.key === 'Backspace' || e.key === 'Escape') {
+        // Swipe Sinistra o Gesto Back -> Indietro (Double Click)
+        handleInputEvent('DOUBLE_CLICK');
+      }
     });
 
     // ==========================================
     // INIZIALIZZAZIONE CON CONTROLLO CREDENZIALI
     // ==========================================
     async function initLauncher() {
-      // Se mancano il token Discord o il topic Ntfy principale, mostra la schermata di setup
       if (!BOT_TOKEN || !NTFY_TOPIC_RX) {
         document.getElementById('hud-container').style.display = 'none';
         document.getElementById('controls-container').style.display = 'none';
