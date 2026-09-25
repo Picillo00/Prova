@@ -1,231 +1,672 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-  <meta name="theme-color" content="#000000">
-  <title>Browser a freccia</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ray-Ban Meta Display Launcher</title>
   <style>
-    :root {
-      --bg: #000; --fg: #fff; --accent: #39ff14;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #000;
+      color: #00ff66;
+      font-family: 'Courier New', Courier, monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      padding: 10px;
     }
-    * { box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
-    body, html {
-      margin:0; padding:0; height:100%; background:var(--bg); color:var(--fg);
-      font-family: -apple-system, sans-serif; overflow:hidden; touch-action:none;
+    
+    /* STILE HUD PRINCIPALE */
+    #hud-container {
+      width: 100%;
+      max-width: 600px;
+      height: 320px;
+      border: 1px solid #00ff66;
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(0, 20, 0, 0.9);
+      box-shadow: 0 0 15px rgba(0, 255, 102, 0.2);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
     }
-    #wrap {
-      display:flex; flex-direction:column; height:100%; padding:8px;
+    #display {
+      white-space: pre;
+      font-size: 14px;
+      line-height: 1.35;
+      overflow: hidden;
+      flex-grow: 1;
     }
-    #url-bar {
-      background:#111; padding:8px; border-radius:6px; margin-bottom:8px;
-      font-size:14px; color:#aaa; text-align:center; border:1px solid #222;
-    }
-    #grid {
-      display:grid;
+    
+    /* PULSANTI DI CONTROLLO */
+    .controls {
+      margin-top: 15px;
+      display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap:8px;
-      flex-grow:1;
-      align-content:start;
+      gap: 10px;
+      width: 100%;
+      max-width: 600px;
     }
-    .tile {
-      background:#1a1a1a;
-      border:1px solid #333;
-      border-radius:10px;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      padding:10px 4px;
-      transition:0.1s;
-      text-align:center;
-      font-size:13px;
-      color:#ccc;
+    .btn {
+      background: #111;
+      color: #00ff66;
+      border: 1px solid #00ff66;
+      padding: 12px;
+      font-size: 14px;
+      font-family: inherit;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      user-select: none;
     }
-    .tile.selected {
-      background:var(--accent);
-      color:#000;
-      border-color:#fff;
-      transform:scale(1.05);
-      font-weight:bold;
+    .btn:active { background: #00ff66; color: #000; }
+
+    /* STILE SCHERMATA DI CONFIGURAZIONE (Visibile solo se mancano i token) */
+    #setup-container {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 500px;
+      background: #111;
+      padding: 20px;
+      border: 1px solid #00ff66;
+      border-radius: 8px;
     }
-    .tile .icon { font-size:28px; margin-bottom:4px; }
-    #instructions {
-      font-size:10px; color:#555; text-align:center; margin-top:6px;
+    #setup-container h2 { text-align: center; margin-bottom: 10px; }
+    #setup-container label { font-size: 12px; margin-bottom: -8px; color: #aaa; }
+    #setup-container input {
+      background: #000;
+      color: #00ff66;
+      border: 1px solid #555;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: inherit;
+    }
+    #setup-container button {
+      background: #00ff66;
+      color: #000;
+      border: none;
+      padding: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-<div id="wrap">
-  <div id="url-bar">🌐 Browser a freccia</div>
-  <div id="grid"></div>
-  <div id="instructions">←↑↓→ Muovi (tieni premuto per accelerare) &nbsp;|&nbsp; Enter: Apri</div>
-</div>
 
-<script>
-(() => {
-  // Siti predefiniti (nome, URL, emoji)
-  const sites = [
-    { name:'Google', url:'https://www.google.com', icon:'🔍' },
-    { name:'YouTube', url:'https://www.youtube.com', icon:'▶️' },
-    { name:'Wikipedia', url:'https://it.wikipedia.org', icon:'📚' },
-    { name:'WhatsApp', url:'https://web.whatsapp.com', icon:'💬' },
-    { name:'Gmail', url:'https://mail.google.com', icon:'📧' },
-    { name:'Maps', url:'https://www.google.com/maps', icon:'🗺️' },
-    { name:'Twitter', url:'https://twitter.com', icon:'🐦' },
-    { name:'Instagram', url:'https://www.instagram.com', icon:'📷' },
-    { name:'Reddit', url:'https://www.reddit.com', icon:'🤖' },
-    { name:'Netflix', url:'https://www.netflix.com', icon:'🎬' },
-    { name:'Spotify', url:'https://open.spotify.com', icon:'🎵' },
-    { name:'Amazon', url:'https://www.amazon.it', icon:'🛒' },
-    { name:'Traduttore', url:'https://translate.google.com', icon:'🌍' },
-    { name:'Meteo', url:'https://www.ilmeteo.it', icon:'☀️' },
-    { name:'News', url:'https://news.google.com', icon:'📰' },
-    { name:'Calcolatrice', url:'https://www.google.com/search?q=calcolatrice', icon:'🧮' },
-  ];
+  <!-- SCHERMATA CONFIGURAZIONE INIZIALE -->
+  <div id="setup-container">
+    <h2>Configurazione Credenziali</h2>
+    <p style="font-size: 12px; text-align: center; margin-bottom: 10px;">I dati verranno salvati solo su questo dispositivo.</p>
+    
+    <label>Discord Bot Token</label>
+    <input type="text" id="in-bot-token" placeholder="Es: MTUzND...">
+    
+    <label>Discord Channel ID</label>
+    <input type="text" id="in-channel-id" placeholder="Es: 1544109219685339289">
+    
+    <label>Discord Webhook URL</label>
+    <input type="text" id="in-webhook-url" placeholder="Es: https://discord.com/api/webhooks/...">
+    
+    <label>Ntfy Topic Ricezione (da lei a te)</label>
+    <input type="text" id="in-ntfy-rx" placeholder="Es: topic_segreto_rx">
+    
+    <label>Ntfy Topic Invio (da te a lei)</label>
+    <input type="text" id="in-ntfy-tx" placeholder="Es: topic_segreto_tx">
+    
+    <button onclick="saveSetup()">Salva e Avvia Launcher</button>
+  </div>
 
-  const cols = 4;
-  const total = sites.length;
-  let currentIndex = 0;
+  <!-- INTERFACCIA HUD PRINCIPALE -->
+  <div id="hud-container">
+    <div id="display">Inizializzazione Launcher...</div>
+  </div>
 
-  const grid = document.getElementById('grid');
-  const urlBar = document.getElementById('url-bar');
+  <div class="controls" id="controls-container">
+    <button class="btn" onclick="handleInputEvent('UP')">▲ SU</button>
+    <button class="btn" onclick="handleInputEvent('DOWN')">▼ GIÙ</button>
+    <button class="btn" onclick="handleInputEvent('CLICK')">OK (Click)</button>
+    <button class="btn" onclick="handleInputEvent('DOUBLE_CLICK')">INDIETRO (2x Click)</button>
+  </div>
 
-  // Disegna la griglia
-  function renderGrid() {
-    grid.innerHTML = '';
-    sites.forEach((site, idx) => {
-      const tile = document.createElement('div');
-      tile.className = 'tile';
-      tile.dataset.index = idx;
-      tile.innerHTML = `<span class="icon">${site.icon}</span><span>${site.name}</span>`;
-      if (idx === currentIndex) tile.classList.add('selected');
-      tile.addEventListener('click', () => {
-        setSelection(idx);
-        openSelected();
-      });
-      grid.appendChild(tile);
-    });
-  }
+  <script>
+    // ==========================================
+    // CREDENZIALI DA LOCALSTORAGE
+    // ==========================================
+    const BOT_TOKEN = localStorage.getItem('DISCORD_BOT_TOKEN') || "";
+    const CHANNEL_ID = localStorage.getItem('DISCORD_CHANNEL_ID') || "";
+    const WEBHOOK_URL = localStorage.getItem('DISCORD_WEBHOOK_URL') || "";
+    const NTFY_TOPIC_RX = localStorage.getItem('NTFY_TOPIC_RX') || "";
+    const NTFY_TOPIC_TX = localStorage.getItem('NTFY_TOPIC_TX') || "";
 
-  function updateSelection() {
-    const prev = document.querySelector('.tile.selected');
-    if (prev) prev.classList.remove('selected');
-    const next = document.querySelector(`.tile[data-index="${currentIndex}"]`);
-    if (next) next.classList.add('selected');
-  }
-
-  function setSelection(idx) {
-    currentIndex = idx;
-    updateSelection();
-  }
-
-  function moveSelection(dx, dy) {
-    const row = Math.floor(currentIndex / cols);
-    const col = currentIndex % cols;
-    let newRow = row + dy;
-    let newCol = col + dx;
-
-    // Wrap orizzontale
-    if (newCol < 0) newCol = cols - 1;
-    if (newCol >= cols) newCol = 0;
-    // Wrap verticale
-    const totalRows = Math.ceil(total / cols);
-    if (newRow < 0) newRow = totalRows - 1;
-    if (newRow >= totalRows) newRow = 0;
-
-    let newIndex = newRow * cols + newCol;
-    // Se l'ultima riga non è piena, ripiega sull'ultimo elemento
-    if (newIndex >= total) newIndex = total - 1;
-    if (newIndex < 0) newIndex = 0;
-
-    setSelection(newIndex);
-  }
-
-  function openSelected() {
-    const site = sites[currentIndex];
-    urlBar.textContent = `🌐 Aprendo ${site.name}...`;
-    // Apre il link in una nuova finestra (o stessa, a seconda del browser)
-    // Usiamo window.location per sicurezza
-    window.location.href = site.url;
-  }
-
-  // Gestione tasti con accelerazione
-  const keyState = {
-    ArrowUp: false,
-    ArrowDown: false,
-    ArrowLeft: false,
-    ArrowRight: false,
-  };
-
-  let moveInterval = null;
-  const INITIAL_DELAY = 280;  // ms prima di iniziare a ripetere
-  const REPEAT_RATE = 60;     // ms tra un movimento e l'altro (molto veloce)
-  let currentDirection = null;
-
-  function startMoving(direction) {
-    if (moveInterval) return;
-    currentDirection = direction;
-    // Esegue subito il primo movimento
-    moveSelection(
-      direction === 'ArrowRight' ? 1 : direction === 'ArrowLeft' ? -1 : 0,
-      direction === 'ArrowDown' ? 1 : direction === 'ArrowUp' ? -1 : 0
-    );
-    // Poi imposta l'intervallo rapido dopo un breve ritardo
-    moveInterval = setInterval(() => {
-      if (currentDirection) {
-        moveSelection(
-          currentDirection === 'ArrowRight' ? 1 : currentDirection === 'ArrowLeft' ? -1 : 0,
-          currentDirection === 'ArrowDown' ? 1 : currentDirection === 'ArrowUp' ? -1 : 0
-        );
-      }
-    }, REPEAT_RATE);
-  }
-
-  function stopMoving() {
-    if (moveInterval) {
-      clearInterval(moveInterval);
-      moveInterval = null;
+    // Funzione per salvare le credenziali dal modulo HTML
+    function saveSetup() {
+      localStorage.setItem('DISCORD_BOT_TOKEN', document.getElementById('in-bot-token').value.trim());
+      localStorage.setItem('DISCORD_CHANNEL_ID', document.getElementById('in-channel-id').value.trim());
+      localStorage.setItem('DISCORD_WEBHOOK_URL', document.getElementById('in-webhook-url').value.trim());
+      localStorage.setItem('NTFY_TOPIC_RX', document.getElementById('in-ntfy-rx').value.trim());
+      localStorage.setItem('NTFY_TOPIC_TX', document.getElementById('in-ntfy-tx').value.trim());
+      location.reload(); // Ricarica la pagina per applicare le variabili
     }
-    currentDirection = null;
-  }
 
-  window.addEventListener('keydown', (e) => {
-    const key = e.key;
-    if (key in keyState) {
-      e.preventDefault();
-      if (!keyState[key]) {
-        keyState[key] = true;
-        startMoving(key);
+    // ==========================================
+    // DIZIONARIO ITALIANO
+    // ==========================================
+    let ITALIAN_WORDS = [];
+
+    async function caricaDizionarioItaliano() {
+      try {
+        const response = await fetch('https://raw.githubusercontent.com/napolux/paroleitaliane/master/paroleitaliane/60000_parole_italiane.txt');
+        if (!response.ok) throw new Error(`Errore HTTP: ${response.status}`);
+        
+        const text = await response.text();
+        const vocali = ['a', 'e', 'i', 'o', 'u', 'à', 'è', 'é', 'ì', 'ò', 'ù'];
+        
+        ITALIAN_WORDS = text.split('\n')
+          .map(p => p.trim().toLowerCase())
+          .filter(p => p.length > 4 && p.length <= 13)
+          .filter(p => vocali.includes(p.slice(-1)))
+          .filter(p => !/[jkwxy]/.test(p))
+          .sort((a, b) => a.length - b.length);
+      } catch (error) {
+        console.error("Errore caricamento dizionario:", error);
+        ITALIAN_WORDS = [
+          "amore", "prondoo", "francoo", "macchina", "caserma", 
+          "basilico", "scendere", "correre", "ponte", "arrivo", 
+          "partito", "minuti", "doccia", "stasera", "giochiamo",
+          "faccio", "scocciato", "grazie"
+        ].sort((a, b) => a.length - b.length);
       }
-    } else if (key === 'Enter') {
-      e.preventDefault();
-      openSelected();
     }
-  });
 
-  window.addEventListener('keyup', (e) => {
-    const key = e.key;
-    if (key in keyState) {
-      e.preventDefault();
-      keyState[key] = false;
-      // Se nessuna freccia è premuta, ferma il movimento
-      if (!Object.values(keyState).some(v => v)) {
-        stopMoving();
-      } else {
-        // Se c'è ancora qualche tasto premuto, aggiorna la direzione
-        const active = Object.entries(keyState).find(([k,v]) => v);
-        if (active) {
-          currentDirection = active[0];
+    // ==========================================
+    // STATO GLOBALE E MORSE
+    // ==========================================
+    let activeApp = 'HOME';
+    let homeIndex = 0;
+
+    const MORSE_MAP = {
+      '.-': 'a', '-...': 'b', '-.-.': 'c', '-..': 'd', '.': 'e',
+      '..-.': 'f', '--.': 'g', '....': 'h', '..': 'i', '.---': 'j',
+      '-.-': 'k', '.-..': 'l', '--': 'm', '-.': 'n', '---': 'o',
+      '.--.': 'p', '--.-': 'q', '.-.': 'r', '...': 's', '-': 't',
+      '..-': 'u', '...-': 'v', '.--': 'w', '-..-': 'x', '-.--': 'y',
+      '--..': 'z', '-----': '0', '.----': '1', '..---': '2',
+      '...--': '3', '....-': '4', '.....': '5', '-....': '6',
+      '--...': '7', '---..': '8', '----.': '9',
+      '-.-.-': 'DEL', '.-.-': 'INV', '.--.-': 'SUG'
+    };
+
+    function getWordSuggestion(draft) {
+      const words = draft.split(' ');
+      const currentWord = words[words.length - 1].toLowerCase();
+      if (currentWord.length < 1) return '';
+      const match = ITALIAN_WORDS.find(w => w.startsWith(currentWord) && w.length >= currentWord.length + 1);
+      return match || '';
+    }
+
+    function applySuggestion(draft) {
+      const words = draft.split(' ');
+      const suggestion = getWordSuggestion(draft);
+      if (!suggestion) return draft;
+      words[words.length - 1] = suggestion;
+      return words.join(' ') + ' ';
+    }
+
+    function renderMorseKeyboard(draft, buffer) {
+      let displayDraft = draft + "_";
+      if (displayDraft.length > 25) displayDraft = "..." + displayDraft.slice(-22);
+
+      const suggestion = getWordSuggestion(draft);
+      const suggestionLine = suggestion ? `Suggerito: ${suggestion} | .--.- |\n` : '';
+
+      let content = `Testo: ${displayDraft}\n`;
+      if (suggestionLine) content += suggestionLine;
+      content += `Codice: ${buffer}_\n`;
+      content += `| A .- | B -... | C -.-. | D -.. | E . | F ..-. | G --. | H .... | I .. |\n`;
+      content += `| J .--- | K -.- | L .-.. | M -- | N -. | O --- | P .--. | Q --.- |\n`;
+      content += `| R .-. | S ... | T - | U ..- | V ...- | W .-- | X -..- | Y -.-- | Z --.. |\n`;
+      content += `| 0 ----- | 1 .---- | 2 ..--- | 3 ...-- | 4 ....- | 5 ..... | 6 -.... |\n`;
+      content += `| 7 --... | 8 ---.. | 9 ----. | DEL -.-.- | INV .-.- |\n`;
+      content += `[Su] Conferma/Spazio`;
+      return content;
+    }
+
+    const KEYBOARD_ITEMS = [
+      "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+      "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+      "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+      "Spazio", "Cancella", "Invio", ".", "?", "!", "_"
+    ];
+
+    function renderFullKeyboard(items, currentIndex) {
+      let result = ""; let rowStr = ""; const cols = 8;
+      for(let i = 0; i < items.length; i++) {
+        let disp = items[i];
+        if (disp === "Spazio") disp = "SPZ"; else if (disp === "Cancella") disp = "DEL"; else if (disp === "Invio") disp = "INV";
+        let cell = (i === currentIndex) ? (disp.length === 1 ? ` >${disp}< ` : `>${disp}<`) : (disp.length === 1 ? `  ${disp}  ` : ` ${disp} `);
+        rowStr += cell;
+        if ((i + 1) % cols === 0 || i === items.length - 1) { result += rowStr.trimEnd() + "\n"; rowStr = ""; }
+      }
+      return result;
+    }
+
+    function formatDiscordTime(isoString) {
+      const date = new Date(isoString);
+      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function getCurrentTimestamp() {
+      const now = new Date();
+      return `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
+
+    // ==========================================
+    // SEZIONE DISCORD
+    // ==========================================
+    let discordState = 'CHAT_NAV';
+    let discordReplyMenuIndex = 0;
+    let chatHistory = [];
+    let chatNavIndex = 0;
+    let selectedDiscordQuickIndex = 0;
+    let pendingDiscordQuickReply = "";
+    const MAX_VISIBLE_DISCORD = 7;
+    let discordScrollOffset = 0;
+
+    let discordKeyboardIndex = 0;
+    let discordDraft = "";
+    let discordMorseBuffer = "";
+    let ws = null;
+    let botId = "";
+    let heartbeatInterval = null;
+    let activeRecognition = null;
+    let discordQuickScrollOffset = 0;
+    const MAX_VISIBLE_QUICK_DISCORD = 8;
+
+    function getDiscordQuickReplies() {
+      const data = localStorage.getItem('discord_quick_replies');
+      return data ? JSON.parse(data) : [
+        'aoo zaa', 'come stai, bene tu, bene ciao', 'stasera giochiamo?', 
+        'che fai?', 'dove sei?', 'ciao', 'sono da rita :/' , 'za' ,'minuti', 
+        'aoooo zaa buongiornooooo❤️❤️', 'si', 'no', 'prondo', 
+        'franco', 'za arrivo a casa, faccio la doccia e ci sono', 
+        'faccio la doccia za e ci sono', 'za arrivo a casa e ci sono'
+      ];
+    }
+
+    function updateDiscordScrollOffset() {
+      const total = chatHistory.length;
+      if (chatNavIndex >= total) discordScrollOffset = Math.max(0, total - MAX_VISIBLE_DISCORD);
+      else if (chatNavIndex < discordScrollOffset) discordScrollOffset = chatNavIndex;
+      else if (chatNavIndex >= discordScrollOffset + MAX_VISIBLE_DISCORD) discordScrollOffset = chatNavIndex - MAX_VISIBLE_DISCORD + 1;
+    }
+
+    function updateDiscordDisplayContent() {
+      let content = "";
+      if (discordState === 'CHAT_NAV') {
+        content = `                            ----Discord gruppo RAY-BAN META----\n`;
+        const total = chatHistory.length; const start = discordScrollOffset; const end = Math.min(total, start + MAX_VISIBLE_DISCORD);
+        for (let i = start; i < end; i++) content += `${chatHistory[i]}\n`;
+        const empty = MAX_VISIBLE_DISCORD - (end - start);
+        for (let i = 0; i < empty; i++) content += "\n";
+      }
+      else if (discordState === 'REPLY_MENU') {
+        content = "-DISCORD-\n";
+        content += (discordReplyMenuIndex === 0 ? "> " : "  ") + "Microfono\n";
+        content += (discordReplyMenuIndex === 1 ? "> " : "  ") + "Chat Veloce\n";
+        content += (discordReplyMenuIndex === 2 ? "> " : "  ") + "Tastiera\n";
+        content += (discordReplyMenuIndex === 3 ? "> " : "  ") + "Morse\n";
+      }
+      else if (discordState === 'VOCALE') content = `--- VOCALE ---\n${discordDraft || "In ascolto..."}\n\n[Click] Ferma\n[Doppio click = Indietro]`;
+      else if (discordState === 'VOCALE_CONFERMA') content = `--- INVIA? ---\n${discordDraft}\n\n[Click] Invia\n[Swipe] Ripeti\n[Doppio click = Indietro]`;
+      else if (discordState === 'VELOCI') {
+        const replies = getDiscordQuickReplies(); const start = discordQuickScrollOffset; const end = Math.min(replies.length, start + MAX_VISIBLE_QUICK_DISCORD);
+        for (let i = start; i < end; i++) { const pointer = (i === selectedDiscordQuickIndex) ? "> " : "  "; content += `${pointer}${replies[i]}\n`; }
+      }
+      else if (discordState === 'VELOCI_CONFERMA') content = `--- CONFERMA INVIO ---\n"${pendingDiscordQuickReply}"\n\n[Click] Invia\n[Doppio click = Indietro]`;
+      else if (discordState === 'TASTIERA') {
+        let displayDraft = discordDraft + "_"; if (displayDraft.length > 25) displayDraft = "..." + displayDraft.slice(-22);
+        content = `Testo: ${displayDraft}\n` + renderFullKeyboard(KEYBOARD_ITEMS, discordKeyboardIndex);
+      }
+      else if (discordState === 'MORSE') content = renderMorseKeyboard(discordDraft, discordMorseBuffer);
+      return content;
+    }
+
+    async function sendDiscordMessage(content) {
+      if (!WEBHOOK_URL || !content.trim()) return;
+      try {
+        await fetch(WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: content, username: "Davide (Occhiali)" }) });
+        const timeStr = formatDiscordTime(new Date().toISOString()); chatHistory.unshift(`[${timeStr}] Tu: ${content}`);
+        if (discordState === 'CHAT_NAV') { chatNavIndex = 0; updateDiscordScrollOffset(); updateMainDisplay(); }
+      } catch (e) { console.error("Errore di rete invio:", e); }
+    }
+
+    function startDiscordVoiceRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) { alert("Voce non supportata."); discordState = 'CHAT_NAV'; updateMainDisplay(); return; }
+      if (activeRecognition) try { activeRecognition.stop(); } catch (e) {}
+      let accumulatedText = ""; discordDraft = "";
+      const rec = new SpeechRecognition(); rec.lang = 'it-IT'; rec.interimResults = true; rec.continuous = true;
+      rec.onresult = (e) => {
+        let currentSessionText = ''; for (let i = 0; i < e.results.length; ++i) currentSessionText += e.results[i][0].transcript;
+        discordDraft = (accumulatedText + " " + currentSessionText).trim(); if (discordState === 'VOCALE') updateMainDisplay();
+      };
+      rec.onend = () => { if (discordState === 'VOCALE') { accumulatedText = discordDraft; try { rec.start(); } catch (err) {} } };
+      rec.onerror = (e) => {
+        if (e.error === 'no-speech' && discordState === 'VOCALE') { accumulatedText = discordDraft; try { rec.start(); } catch (err) {} return; }
+        if (discordState === 'VOCALE') { discordState = 'CHAT_NAV'; updateMainDisplay(); }
+      };
+      rec.start(); activeRecognition = rec; discordState = 'VOCALE'; updateMainDisplay();
+    }
+
+    function connectToDiscord() {
+      if (!BOT_TOKEN || !CHANNEL_ID) { chatHistory = ["ERRORE: Credenziali Discord mancanti."]; updateMainDisplay(); return; }
+      ws = new WebSocket('wss://gateway.discord.gg/?v=10&encoding=json');
+      ws.onmessage = async (event) => {
+        const { t, op, d } = JSON.parse(event.data);
+        if (op === 10) {
+          if (heartbeatInterval) clearInterval(heartbeatInterval);
+          heartbeatInterval = setInterval(() => ws?.send(JSON.stringify({ op: 1, d: null })), d.heartbeat_interval);
+          ws?.send(JSON.stringify({ op: 2, d: { token: BOT_TOKEN, intents: 33280, properties: { os: "linux", browser: "rayban", device: "rayban" } } }));
+        }
+        if (t === 'READY') {
+          botId = d.user.id; chatHistory = ["Connesso a Discord!"]; chatNavIndex = 0; updateDiscordScrollOffset();
+          if (activeApp === 'DISCORD') updateMainDisplay();
+        }
+        if (t === 'MESSAGE_CREATE' && d.channel_id === CHANNEL_ID) {
+          const isOwnBot = d.author.id === botId; if (d.author.bot && !isOwnBot) return;
+          const sender = isOwnBot ? "Bot" : d.author.username; const timeStr = d.timestamp ? formatDiscordTime(d.timestamp) : formatDiscordTime(new Date().toISOString());
+          chatHistory.unshift(`[${timeStr}] ${sender}: ${d.content}`);
+          if (activeApp === 'DISCORD' && discordState === 'CHAT_NAV') { if (chatNavIndex === 0 || isOwnBot) chatNavIndex = 0; else chatNavIndex++; updateDiscordScrollOffset(); updateMainDisplay(); }
+        }
+      };
+    }
+
+    // ==========================================
+    // SEZIONE NTFY
+    // ==========================================
+    let ntfyState = 'CHAT_NAV'; let ntfyReplyMenuIndex = 0; let ntfyHistory = []; let ntfyNavIndex = 0; let ntfyScrollOffset = 0; const MAX_VISIBLE_NTFY = 7;
+    let selectedNtfyCatIndex = 0; let ntfyCatScrollOffset = 0; let selectedNtfyQuickIndex = 0; let pendingNtfyQuickReply = ""; let ntfyQuickScrollOffset = 0; const MAX_VISIBLE_QUICK_NTFY = 8;
+    let ntfyKeyboardIndex = 0; let ntfyDraft = ""; let ntfyMorseBuffer = ""; let ntfyWs = null;
+
+    function getNtfyQuickCategories() {
+      return [
+        { categoria: 'Amore', risposte: ['ti amo💛🩵', 'amore', 'ti amo assai assaiii💛🩵', 'bedudina popopo'] },
+        { categoria: 'Affermazioni', risposte: ['sii amoree', 'noo amoree', 'va bene amore mio', 'prondoo', 'francoo', 'io scocciato', 'andare via', 'seii vita miaaa💛🩵', 'bravissimaa amoreee💛🩵', 'sei bellissima amore mio💛🩵'] },
+        { categoria: 'Domande', risposte: ['amoooree mioo, che faii ?', 'amoooree mioo, dovee seii ?', 'amoooree mioo, come staii ?', 'amore mio tutto benee ?'] },
+        { categoria: 'Macchina', risposte: ['sono partito amoree', 'sono arrivato amoree', 'ho girato per il basilico amoree', 'sono sui giardinetti amoree', 'sono vicino al ponte amoree', 'inizia a scendere amoreee', 'sto cacciando la macchina amoree', "sto mettendo l'acqua per correre amoreee", 'sono vicino new trend amore', 'sono vicino caserma amore', "c'è un po di traffichino amoree", "non c'è traffico godo"] }
+      ];
+    }
+
+    function updateNtfyScrollOffset() {
+      const total = ntfyHistory.length;
+      if (ntfyNavIndex >= total) ntfyScrollOffset = Math.max(0, total - MAX_VISIBLE_NTFY);
+      else if (ntfyNavIndex < ntfyScrollOffset) ntfyScrollOffset = ntfyNavIndex;
+      else if (ntfyNavIndex >= ntfyScrollOffset + MAX_VISIBLE_NTFY) ntfyScrollOffset = ntfyNavIndex - MAX_VISIBLE_NTFY + 1;
+    }
+
+    function updateNtfyDisplayContent() {
+      let content = "";
+      if (ntfyState === 'CHAT_NAV') {
+        content = `                                           ----NTFY----\n`;
+        const total = ntfyHistory.length; const start = ntfyScrollOffset; const end = Math.min(total, start + MAX_VISIBLE_NTFY);
+        for (let i = start; i < end; i++) content += `${ntfyHistory[i]}\n`;
+        const empty = MAX_VISIBLE_NTFY - (end - start); for (let i = 0; i < empty; i++) content += "\n";
+      }
+      else if (ntfyState === 'REPLY_MENU') {
+        content = "-NTFY-\n";
+        content += (ntfyReplyMenuIndex === 0 ? "> " : "  ") + "Microfono\n"; content += (ntfyReplyMenuIndex === 1 ? "> " : "  ") + "Chat Veloce\n";
+        content += (ntfyReplyMenuIndex === 2 ? "> " : "  ") + "Tastiera\n"; content += (ntfyReplyMenuIndex === 3 ? "> " : "  ") + "Morse\n";
+      }
+      else if (ntfyState === 'VOCALE') content = `--- VOCALE ---\n${ntfyDraft || "In ascolto..."}\n\n[Click] Ferma\n[Doppio click = Indietro]`;
+      else if (ntfyState === 'VOCALE_CONFERMA') content = `--- INVIA? ---\n${ntfyDraft}\n\n[Click] Invia\n[Swipe] Ripeti\n[Doppio click = Indietro]`;
+      else if (ntfyState === 'VELOCI_CAT') {
+        const categories = getNtfyQuickCategories(); const start = ntfyCatScrollOffset; const end = Math.min(categories.length, start + MAX_VISIBLE_QUICK_NTFY);
+        for (let i = start; i < end; i++) { const pointer = (i === selectedNtfyCatIndex) ? "> " : "  "; content += `${pointer}${categories[i].categoria}\n`; }
+      }
+      else if (ntfyState === 'VELOCI') {
+        const categories = getNtfyQuickCategories(); const activeCategory = categories[selectedNtfyCatIndex]; content = `--- ${activeCategory.categoria} ---\n`;
+        const replies = activeCategory.risposte; const start = ntfyQuickScrollOffset; const end = Math.min(replies.length, start + MAX_VISIBLE_QUICK_NTFY);
+        for (let i = start; i < end; i++) { const pointer = (i === selectedNtfyQuickIndex) ? "> " : "  "; content += `${pointer}${replies[i]}\n`; }
+      }
+      else if (ntfyState === 'VELOCI_CONFERMA') content = `--- CONFERMA INVIO ---\n"${pendingNtfyQuickReply}"\n\n[Click] Invia\n[Doppio click = Indietro]`;
+      else if (ntfyState === 'TASTIERA') {
+        let displayDraft = ntfyDraft + "_"; if (displayDraft.length > 25) displayDraft = "..." + displayDraft.slice(-22);
+        content = `Testo: ${displayDraft}\n` + renderFullKeyboard(KEYBOARD_ITEMS, ntfyKeyboardIndex);
+      }
+      else if (ntfyState === 'MORSE') content = renderMorseKeyboard(ntfyDraft, ntfyMorseBuffer);
+      return content;
+    }
+
+    async function sendNtfyMessage(content) {
+      if (!content.trim() || !NTFY_TOPIC_TX) return;
+      try {
+        await fetch('https://ntfy.sh/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic: NTFY_TOPIC_TX, message: content, title: 'Amore mio💛🩵(Occhiali)' }) });
+        const timeStr = formatDiscordTime(new Date().toISOString()); ntfyHistory.unshift(`[${timeStr}] Tu: ${content}`);
+        if (ntfyState === 'CHAT_NAV') { ntfyNavIndex = 0; updateNtfyScrollOffset(); updateMainDisplay(); }
+      } catch (e) { console.error("Errore di rete invio ntfy:", e); }
+    }
+
+    function connectToNtfy() {
+      if (!NTFY_TOPIC_RX) { ntfyHistory = ["ERRORE: Topic Ntfy mancanti."]; updateMainDisplay(); return; }
+      ntfyWs = new WebSocket(`wss://ntfy.sh/${NTFY_TOPIC_RX}/ws`);
+      ntfyWs.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.event === 'message') {
+          const timeStr = formatDiscordTime(new Date().toISOString()); ntfyHistory.unshift(`[${timeStr}] Lei: ${data.message}`);
+          if (activeApp === 'NTFY' && ntfyState === 'CHAT_NAV') { ntfyNavIndex = 0; updateNtfyScrollOffset(); updateMainDisplay(); }
+        }
+      };
+      ntfyHistory = ["Connesso a Ntfy!"];
+    }
+
+    function startNtfyVoiceRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) return;
+      if (activeRecognition) try { activeRecognition.stop(); } catch (e) {}
+      let accumulatedText = ""; ntfyDraft = "";
+      const rec = new SpeechRecognition(); rec.lang = 'it-IT'; rec.interimResults = true; rec.continuous = true;
+      rec.onresult = (e) => {
+        let currentSessionText = ''; for (let i = 0; i < e.results.length; ++i) currentSessionText += e.results[i][0].transcript;
+        ntfyDraft = (accumulatedText + " " + currentSessionText).trim(); if (ntfyState === 'VOCALE') updateMainDisplay();
+      };
+      rec.onend = () => { if (ntfyState === 'VOCALE') { accumulatedText = ntfyDraft; try { rec.start(); } catch (err) {} } };
+      rec.onerror = () => { if (ntfyState === 'VOCALE') { ntfyState = 'CHAT_NAV'; updateMainDisplay(); } };
+      rec.start(); activeRecognition = rec; ntfyState = 'VOCALE'; updateMainDisplay();
+    }
+
+    // ==========================================
+    // GESTIONE DISPLAY HUD E EVENTI
+    // ==========================================
+    function updateMainDisplay() {
+      let content = "";
+      if (activeApp === 'HOME') {
+        content += (homeIndex === 0 ? "> " : "  ") + "    Discord\n";
+        content += (homeIndex === 1 ? "> " : "  ") + "    NTFY\n";
+      } else if (activeApp === 'DISCORD') content = updateDiscordDisplayContent();
+        else if (activeApp === 'NTFY') content = updateNtfyDisplayContent();
+
+      content = `                                                                             ${getCurrentTimestamp()}\n` + content;
+      const lines = content.split('\n'); if (lines.length > 10) content = lines.slice(0, 10).join('\n');
+      document.getElementById('display').innerText = content;
+    }
+
+    function handleInputEvent(eventType) {
+      if (activeApp === 'HOME') {
+        if (eventType === 'UP') { homeIndex = (homeIndex - 1 + 2) % 2; updateMainDisplay(); }
+        else if (eventType === 'DOWN') { homeIndex = (homeIndex + 1) % 2; updateMainDisplay(); }
+        else if (eventType === 'CLICK') {
+          if (homeIndex === 0) { activeApp = 'DISCORD'; discordState = 'CHAT_NAV'; chatNavIndex = 0; updateDiscordScrollOffset(); } 
+          else if (homeIndex === 1) { activeApp = 'NTFY'; ntfyState = 'CHAT_NAV'; ntfyNavIndex = 0; updateNtfyScrollOffset(); }
+          updateMainDisplay();
+        }
+      }
+      else if (activeApp === 'DISCORD') {
+        if (eventType === 'UP') {
+          if (discordState === 'CHAT_NAV') { chatNavIndex = Math.min(chatHistory.length - 1, chatNavIndex + 1); updateDiscordScrollOffset(); updateMainDisplay(); }
+          else if (discordState === 'REPLY_MENU') { discordReplyMenuIndex = (discordReplyMenuIndex - 1 + 4) % 4; updateMainDisplay(); }
+          else if (discordState === 'VOCALE_CONFERMA') { startDiscordVoiceRecognition(); }
+          else if (discordState === 'VELOCI') {
+            const replies = getDiscordQuickReplies(); selectedDiscordQuickIndex = (selectedDiscordQuickIndex - 1 + replies.length) % replies.length;
+            if (selectedDiscordQuickIndex === replies.length - 1) discordQuickScrollOffset = Math.max(0, replies.length - MAX_VISIBLE_QUICK_DISCORD);
+            else if (selectedDiscordQuickIndex < discordQuickScrollOffset) discordQuickScrollOffset = selectedDiscordQuickIndex; updateMainDisplay();
+          } 
+          else if (discordState === 'TASTIERA') { discordKeyboardIndex = (discordKeyboardIndex - 1 + KEYBOARD_ITEMS.length) % KEYBOARD_ITEMS.length; updateMainDisplay(); }
+          else if (discordState === 'MORSE') {
+            if (discordMorseBuffer === "") discordDraft += " ";
+            else {
+              const char = MORSE_MAP[discordMorseBuffer];
+              if (char === 'DEL') discordDraft = discordDraft.slice(0, -1); else if (char === 'SUG') discordDraft = applySuggestion(discordDraft);
+              else if (char === 'INV') { sendDiscordMessage(discordDraft); discordDraft = ""; discordState = 'CHAT_NAV'; chatNavIndex = 0; updateDiscordScrollOffset(); }
+              else if (char) discordDraft += char; discordMorseBuffer = "";
+            }
+            updateMainDisplay();
+          }
+        } 
+        else if (eventType === 'DOWN') {
+          if (discordState === 'CHAT_NAV') { chatNavIndex = Math.max(0, chatNavIndex - 1); updateDiscordScrollOffset(); updateMainDisplay(); }
+          else if (discordState === 'REPLY_MENU') { discordReplyMenuIndex = (discordReplyMenuIndex + 1) % 4; updateMainDisplay(); }
+          else if (discordState === 'VOCALE_CONFERMA') { startDiscordVoiceRecognition(); }
+          else if (discordState === 'VELOCI') {
+            const replies = getDiscordQuickReplies(); selectedDiscordQuickIndex = (selectedDiscordQuickIndex + 1) % replies.length;
+            if (selectedDiscordQuickIndex === 0) discordQuickScrollOffset = 0; else if (selectedDiscordQuickIndex >= discordQuickScrollOffset + MAX_VISIBLE_QUICK_DISCORD) discordQuickScrollOffset++; updateMainDisplay();
+          } 
+          else if (discordState === 'TASTIERA') { discordKeyboardIndex = (discordKeyboardIndex + 1) % KEYBOARD_ITEMS.length; updateMainDisplay(); }
+          else if (discordState === 'MORSE') { discordMorseBuffer += "-"; updateMainDisplay(); }
+        }
+        else if (eventType === 'CLICK') {
+          if (discordState === 'CHAT_NAV') { discordState = 'REPLY_MENU'; updateMainDisplay(); } 
+          else if (discordState === 'REPLY_MENU') {
+            if (discordReplyMenuIndex === 0) startDiscordVoiceRecognition();
+            else if (discordReplyMenuIndex === 1) { discordState = 'VELOCI'; selectedDiscordQuickIndex = 0; discordQuickScrollOffset = 0; updateMainDisplay(); }
+            else if (discordReplyMenuIndex === 2) { discordState = 'TASTIERA'; discordKeyboardIndex = 0; discordDraft = ""; updateMainDisplay(); }
+            else if (discordReplyMenuIndex === 3) { discordState = 'MORSE'; discordMorseBuffer = ""; discordDraft = ""; updateMainDisplay(); }
+          } 
+          else if (discordState === 'VOCALE') { if (activeRecognition) activeRecognition.stop(); discordState = 'VOCALE_CONFERMA'; updateMainDisplay(); } 
+          else if (discordState === 'VOCALE_CONFERMA') { if (discordDraft.trim() !== "") sendDiscordMessage(discordDraft); discordDraft = ""; discordState = 'CHAT_NAV'; chatNavIndex = 0; updateDiscordScrollOffset(); updateMainDisplay(); } 
+          else if (discordState === 'VELOCI') { pendingDiscordQuickReply = getDiscordQuickReplies()[selectedDiscordQuickIndex]; discordState = 'VELOCI_CONFERMA'; updateMainDisplay(); } 
+          else if (discordState === 'VELOCI_CONFERMA') { sendDiscordMessage(pendingDiscordQuickReply); discordState = 'CHAT_NAV'; chatNavIndex = 0; updateDiscordScrollOffset(); updateMainDisplay(); } 
+          else if (discordState === 'TASTIERA') {
+            const item = KEYBOARD_ITEMS[discordKeyboardIndex];
+            if (item === 'Cancella') discordDraft = discordDraft.slice(0, -1);
+            else if (item === 'Invio') { sendDiscordMessage(discordDraft); discordDraft = ""; discordState = 'CHAT_NAV'; chatNavIndex = 0; updateDiscordScrollOffset(); } 
+            else if (item === 'Spazio') discordDraft += ' '; else discordDraft += item; updateMainDisplay();
+          }
+          else if (discordState === 'MORSE') { discordMorseBuffer += "."; updateMainDisplay(); }
+        }
+        else if (eventType === 'DOUBLE_CLICK') {
+          if (discordState === 'VELOCI_CONFERMA') { discordState = 'VELOCI'; updateMainDisplay(); } 
+          else if (discordState === 'VOCALE_CONFERMA') { discordState = 'VOCALE'; startDiscordVoiceRecognition(); } 
+          else if (discordState === 'VELOCI' || discordState === 'TASTIERA' || discordState === 'VOCALE' || discordState === 'MORSE') { if (activeRecognition) try { activeRecognition.stop(); } catch (e) {} discordDraft = ""; discordState = 'REPLY_MENU'; updateMainDisplay(); } 
+          else if (discordState === 'REPLY_MENU') { discordState = 'CHAT_NAV'; updateMainDisplay(); } 
+          else if (discordState === 'CHAT_NAV') { activeApp = 'HOME'; updateMainDisplay(); }
+        }
+      } 
+      else if (activeApp === 'NTFY') {
+        if (eventType === 'UP') {
+          if (ntfyState === 'CHAT_NAV') { ntfyNavIndex = Math.min(ntfyHistory.length - 1, ntfyNavIndex + 1); updateNtfyScrollOffset(); updateMainDisplay(); }
+          else if (ntfyState === 'REPLY_MENU') { ntfyReplyMenuIndex = (ntfyReplyMenuIndex - 1 + 4) % 4; updateMainDisplay(); }
+          else if (ntfyState === 'VOCALE_CONFERMA') { startNtfyVoiceRecognition(); }
+          else if (ntfyState === 'VELOCI_CAT') {
+            const categories = getNtfyQuickCategories(); selectedNtfyCatIndex = (selectedNtfyCatIndex - 1 + categories.length) % categories.length;
+            if (selectedNtfyCatIndex === categories.length - 1) ntfyCatScrollOffset = Math.max(0, categories.length - MAX_VISIBLE_QUICK_NTFY); else if (selectedNtfyCatIndex < ntfyCatScrollOffset) ntfyCatScrollOffset = selectedNtfyCatIndex; updateMainDisplay();
+          }
+          else if (ntfyState === 'VELOCI') {
+            const replies = getNtfyQuickCategories()[selectedNtfyCatIndex].risposte; selectedNtfyQuickIndex = (selectedNtfyQuickIndex - 1 + replies.length) % replies.length;
+            if (selectedNtfyQuickIndex === replies.length - 1) ntfyQuickScrollOffset = Math.max(0, replies.length - MAX_VISIBLE_QUICK_NTFY); else if (selectedNtfyQuickIndex < ntfyQuickScrollOffset) ntfyQuickScrollOffset = selectedNtfyQuickIndex; updateMainDisplay();
+          } 
+          else if (ntfyState === 'TASTIERA') { ntfyKeyboardIndex = (ntfyKeyboardIndex - 1 + KEYBOARD_ITEMS.length) % KEYBOARD_ITEMS.length; updateMainDisplay(); }
+          else if (ntfyState === 'MORSE') {
+            if (ntfyMorseBuffer === "") ntfyDraft += " ";
+            else {
+              const char = MORSE_MAP[ntfyMorseBuffer];
+              if (char === 'DEL') ntfyDraft = ntfyDraft.slice(0, -1); else if (char === 'SUG') ntfyDraft = applySuggestion(ntfyDraft);
+              else if (char === 'INV') { sendNtfyMessage(ntfyDraft); ntfyDraft = ""; ntfyState = 'CHAT_NAV'; ntfyNavIndex = 0; updateNtfyScrollOffset(); }
+              else if (char) ntfyDraft += char; ntfyMorseBuffer = "";
+            }
+            updateMainDisplay();
+          }
+        } 
+        else if (eventType === 'DOWN') {
+          if (ntfyState === 'CHAT_NAV') { ntfyNavIndex = Math.max(0, ntfyNavIndex - 1); updateNtfyScrollOffset(); updateMainDisplay(); }
+          else if (ntfyState === 'REPLY_MENU') { ntfyReplyMenuIndex = (ntfyReplyMenuIndex + 1) % 4; updateMainDisplay(); }
+          else if (ntfyState === 'VOCALE_CONFERMA') { startNtfyVoiceRecognition(); }
+          else if (ntfyState === 'VELOCI_CAT') {
+            const categories = getNtfyQuickCategories(); selectedNtfyCatIndex = (selectedNtfyCatIndex + 1) % categories.length;
+            if (selectedNtfyCatIndex === 0) ntfyCatScrollOffset = 0; else if (selectedNtfyCatIndex >= ntfyCatScrollOffset + MAX_VISIBLE_QUICK_NTFY) ntfyCatScrollOffset++; updateMainDisplay();
+          }
+          else if (ntfyState === 'VELOCI') {
+            const replies = getNtfyQuickCategories()[selectedNtfyCatIndex].risposte; selectedNtfyQuickIndex = (selectedNtfyQuickIndex + 1) % replies.length;
+            if (selectedNtfyQuickIndex === 0) ntfyQuickScrollOffset = 0; else if (selectedNtfyQuickIndex >= ntfyQuickScrollOffset + MAX_VISIBLE_QUICK_NTFY) ntfyQuickScrollOffset++; updateMainDisplay();
+          } 
+          else if (ntfyState === 'TASTIERA') { ntfyKeyboardIndex = (ntfyKeyboardIndex + 1) % KEYBOARD_ITEMS.length; updateMainDisplay(); }
+          else if (ntfyState === 'MORSE') { ntfyMorseBuffer += "-"; updateMainDisplay(); }
+        }
+        else if (eventType === 'CLICK') {
+          if (ntfyState === 'CHAT_NAV') { ntfyState = 'REPLY_MENU'; updateMainDisplay(); } 
+          else if (ntfyState === 'REPLY_MENU') {
+            if (ntfyReplyMenuIndex === 0) startNtfyVoiceRecognition();
+            else if (ntfyReplyMenuIndex === 1) { ntfyState = 'VELOCI_CAT'; selectedNtfyCatIndex = 0; ntfyCatScrollOffset = 0; updateMainDisplay(); }
+            else if (ntfyReplyMenuIndex === 2) { ntfyState = 'TASTIERA'; ntfyKeyboardIndex = 0; ntfyDraft = ""; updateMainDisplay(); }
+            else if (ntfyReplyMenuIndex === 3) { ntfyState = 'MORSE'; ntfyMorseBuffer = ""; ntfyDraft = ""; updateMainDisplay(); }
+          } 
+          else if (ntfyState === 'VOCALE') { if (activeRecognition) activeRecognition.stop(); ntfyState = 'VOCALE_CONFERMA'; updateMainDisplay(); } 
+          else if (ntfyState === 'VOCALE_CONFERMA') { if (ntfyDraft.trim() !== "") sendNtfyMessage(ntfyDraft); ntfyDraft = ""; ntfyState = 'CHAT_NAV'; ntfyNavIndex = 0; updateNtfyScrollOffset(); updateMainDisplay(); }
+          else if (ntfyState === 'VELOCI_CAT') { ntfyState = 'VELOCI'; selectedNtfyQuickIndex = 0; ntfyQuickScrollOffset = 0; updateMainDisplay(); }
+          else if (ntfyState === 'VELOCI') { pendingNtfyQuickReply = getNtfyQuickCategories()[selectedNtfyCatIndex].risposte[selectedNtfyQuickIndex]; ntfyState = 'VELOCI_CONFERMA'; updateMainDisplay(); } 
+          else if (ntfyState === 'VELOCI_CONFERMA') { sendNtfyMessage(pendingNtfyQuickReply); ntfyState = 'CHAT_NAV'; ntfyNavIndex = 0; updateNtfyScrollOffset(); updateMainDisplay(); } 
+          else if (ntfyState === 'TASTIERA') {
+            const item = KEYBOARD_ITEMS[ntfyKeyboardIndex];
+            if (item === 'Cancella') ntfyDraft = ntfyDraft.slice(0, -1);
+            else if (item === 'Invio') { sendNtfyMessage(ntfyDraft); ntfyDraft = ""; ntfyState = 'CHAT_NAV'; ntfyNavIndex = 0; updateNtfyScrollOffset(); } 
+            else if (item === 'Spazio') ntfyDraft += ' '; else ntfyDraft += item; updateMainDisplay();
+          }
+          else if (ntfyState === 'MORSE') { ntfyMorseBuffer += "."; updateMainDisplay(); }
+        }
+        else if (eventType === 'DOUBLE_CLICK') {
+          if (ntfyState === 'VELOCI_CONFERMA') { ntfyState = 'VELOCI'; updateMainDisplay(); } 
+          else if (ntfyState === 'VELOCI') { ntfyState = 'VELOCI_CAT'; updateMainDisplay(); } 
+          else if (ntfyState === 'VOCALE_CONFERMA') { ntfyState = 'VOCALE'; startNtfyVoiceRecognition(); } 
+          else if (ntfyState === 'VELOCI_CAT' || ntfyState === 'TASTIERA' || ntfyState === 'VOCALE' || ntfyState === 'MORSE') { if (activeRecognition) try { activeRecognition.stop(); } catch (e) {} ntfyDraft = ""; ntfyState = 'REPLY_MENU'; updateMainDisplay(); } 
+          else if (ntfyState === 'REPLY_MENU') { ntfyState = 'CHAT_NAV'; updateMainDisplay(); } 
+          else if (ntfyState === 'CHAT_NAV') { activeApp = 'HOME'; updateMainDisplay(); }
         }
       }
     }
-  });
 
-  // Inizializza
-  renderGrid();
-  window.focus();
-})();
-</script>
+    // MAPPA TASTIERA FISICA
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp') handleInputEvent('UP');
+      else if (e.key === 'ArrowDown') handleInputEvent('DOWN');
+      else if (e.key === 'Enter' || e.key === ' ') handleInputEvent('CLICK');
+      else if (e.key === 'Backspace' || e.key === 'Escape') handleInputEvent('DOUBLE_CLICK');
+    });
+
+    // ==========================================
+    // INIZIALIZZAZIONE CON CONTROLLO CREDENZIALI
+    // ==========================================
+    async function initLauncher() {
+      // Se mancano il token Discord o il topic Ntfy principale, mostra la schermata di setup
+      if (!BOT_TOKEN || !NTFY_TOPIC_RX) {
+        document.getElementById('hud-container').style.display = 'none';
+        document.getElementById('controls-container').style.display = 'none';
+        document.getElementById('setup-container').style.display = 'flex';
+        return;
+      }
+
+      await caricaDizionarioItaliano();
+      updateMainDisplay();
+      connectToDiscord();
+      connectToNtfy();
+    }
+
+    initLauncher();
+  </script>
 </body>
 </html>
