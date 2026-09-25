@@ -102,7 +102,7 @@
   </div>
 
   <script>
-    const TARGET_WIDTH = 50; // Limite perfetto dello schermo impostato
+    const TARGET_WIDTH = 50; // Limite perfetto dello schermo impostato (NON TOCCARE)
 
     // ==========================================
     // SALVATAGGIO AUTOMATICO DA URL (LINK MAGICO)
@@ -491,16 +491,23 @@
 
     async function sendNtfyMessage(content) {
       if (!content.trim()) return;
-      if (!NTFY_TOPIC_TX) {
-        console.error("ERRORE: NTFY_TOPIC_TX non è configurato!");
+      // Fallback: se NTFY_TOPIC_TX non è configurato, usa NTFY_TOPIC_RX
+      const topicToUse = NTFY_TOPIC_TX || NTFY_TOPIC_RX;
+      if (!topicToUse) {
+        ntfyHistory.unshift("[ERRORE] Topic Ntfy non configurato!");
+        ntfyNavIndex = 0;
+        updateNtfyScrollOffset();
+        updateMainDisplay();
         return;
       }
       try {
         const titleEncoded = encodeURIComponent('Amore mio 💛🩵 (Occhiali)');
-        await fetch(`https://ntfy.sh/${NTFY_TOPIC_TX}?title=${titleEncoded}`, { 
+        const response = await fetch(`https://ntfy.sh/${topicToUse}?title=${titleEncoded}`, { 
           method: 'POST', 
           body: content 
         });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
         const timeStr = formatDiscordTime(new Date().toISOString()); 
         const wrappedLines = wrapTextToWidth(`Tu: ${content}`, TARGET_WIDTH);
         wrappedLines.forEach(l => ntfyHistory.unshift(`[${timeStr}] ${l}`));
@@ -511,12 +518,16 @@
         }
       } catch (e) { 
         console.error("Errore di rete invio ntfy:", e); 
+        ntfyHistory.unshift(`[ERRORE] Invio Ntfy fallito`);
+        ntfyNavIndex = 0;
+        updateNtfyScrollOffset();
+        updateMainDisplay();
       }
     }
 
     function connectToNtfy() {
       if (!NTFY_TOPIC_RX) { 
-        ntfyHistory = ["ERRORE: Topic Ntfy mancanti."]; 
+        ntfyHistory = ["ERRORE: Topic Ntfy RX mancante."]; 
         updateMainDisplay(); 
         return; 
       }
