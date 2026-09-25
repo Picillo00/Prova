@@ -503,45 +503,76 @@
 
       const url = `https://ntfy.sh/${encodeURIComponent(topicToUse)}`;
 
-      // 1. Prova prima con XMLHttpRequest (più affidabile nelle WebView wearable)
-      return new Promise((resolve) => {
+      // 1. Prova prima con fetch() in modalità 'cors' standard.
+      //    E' lo stesso identico metodo usato per l'invio a Discord, che sugli
+      //    occhiali funziona regolarmente: la WebView degli occhiali ha
+      //    un'implementazione di XMLHttpRequest meno affidabile di fetch(),
+      //    quindi usiamo fetch come primo tentativo invece che come fallback.
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          body: content
+        });
+        if (res.ok) {
+          onNtfySuccess(content);
+          return true;
+        } else {
+          onNtfyFail(`HTTP ${res.status} ${res.statusText}`);
+          // non facciamo return: proviamo comunque il fallback sotto
+        }
+      } catch (err) {
+        console.warn('fetch() ntfy fallita, provo fallback XHR/no-cors:', err);
+      }
+
+      // 2. Fallback A: XMLHttpRequest classico
+      const xhrResult = await new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
-        xhr.open("POST", url, true);
-        xhr.setRequestHeader("Content-Type", "text/plain; charset=utf-8");
+        try {
+          xhr.open("POST", url, true);
+          xhr.setRequestHeader("Content-Type", "text/plain; charset=utf-8");
+        } catch (e) {
+          resolve({ ok: false, err: e.message || "Eccezione apertura XHR" });
+          return;
+        }
 
         xhr.onload = function () {
-          // Status 0 o 2xx indica successo della trasmissione
           if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 0) {
-            onNtfySuccess(content);
-            resolve(true);
+            resolve({ ok: true });
           } else {
-            onNtfyFail(`HTTP ${xhr.status}`);
-            resolve(false);
+            resolve({ ok: false, err: `HTTP ${xhr.status}` });
           }
         };
-
         xhr.onerror = function () {
-          // 2. Fallback: se XHR viene bloccato da CORS, invia con no-cors
-          fetch(url, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: content
-          }).then(() => {
-            onNtfySuccess(content);
-            resolve(true);
-          }).catch((err) => {
-            onNtfyFail(err.message || "Errore Rete");
-            resolve(false);
-          });
+          resolve({ ok: false, err: "Errore rete XHR" });
         };
+        xhr.ontimeout = function () {
+          resolve({ ok: false, err: "Timeout XHR" });
+        };
+        xhr.timeout = 8000;
 
         try {
           xhr.send(content);
         } catch (e) {
-          onNtfyFail(e.message || "Eccezione XHR");
-          resolve(false);
+          resolve({ ok: false, err: e.message || "Eccezione invio XHR" });
         }
       });
+
+      if (xhrResult.ok) {
+        onNtfySuccess(content);
+        return true;
+      }
+
+      // 3. Fallback B: fetch in modalità no-cors (risposta opaca, non verificabile,
+      //    ma spesso passa quando il problema è la lettura della risposta CORS)
+      try {
+        await fetch(url, { method: 'POST', mode: 'no-cors', body: content });
+        onNtfySuccess(content);
+        return true;
+      } catch (err) {
+        onNtfyFail(xhrResult.err || err.message || "Invio fallito su tutti i canali");
+        return false;
+      }
     }
 
     function onNtfySuccess(content) {
@@ -558,7 +589,7 @@
     function onNtfyFail(errMsg) {
       console.error("Errore invio ntfy:", errMsg); 
       // Mostra l'errore specifico a schermo anziché il testo generico
-      ntfyHistory.unshift(`[ERR] ${errMsg.slice(0, 30)}`);
+      ntfyHistory.unshift(`[ERR] ${String(errMsg).slice(0, 60)}`);
       ntfyNavIndex = 0;
       updateNtfyScrollOffset();
       updateMainDisplay();
