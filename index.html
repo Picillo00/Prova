@@ -491,29 +491,33 @@
 
     async function sendNtfyMessage(content) {
       if (!content.trim()) return;
-      // Fallback: se NTFY_TOPIC_TX non è configurato, usa NTFY_TOPIC_RX
-      const topicToUse = NTFY_TOPIC_TX || NTFY_TOPIC_RX;
-      if (!topicToUse) {
+      
+      // Pulizia e sanitizzazione del topic da localStorage
+      const rawTopic = (NTFY_TOPIC_TX || NTFY_TOPIC_RX || "").trim();
+      if (!rawTopic) {
         ntfyHistory.unshift("[ERRORE] Topic Ntfy non configurato!");
         ntfyNavIndex = 0;
         updateNtfyScrollOffset();
         updateMainDisplay();
         return;
       }
+
+      const cleanTopic = encodeURIComponent(rawTopic);
+
       try {
-        // Usa l'API JSON di Ntfy per evitare problemi con la webview degli occhiali
-        const response = await fetch('https://ntfy.sh/', { 
-          method: 'POST', 
+        // Invio testuale semplice senza JSON/Preflight per massima compatibilità WebView
+        const response = await fetch(`https://ntfy.sh/${cleanTopic}`, { 
+          method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Title': 'Amore mio (Occhiali)' // Solo testo ASCII per evitare eccezioni di codifica
           },
-          body: JSON.stringify({
-            topic: topicToUse,
-            message: content,
-            title: 'Amore mio 💛🩵 (Occhiali)'
-          })
+          body: content 
         });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        // Gestione delle risposte Opaque (status 0) tipiche delle WebView
+        if (!response.ok && response.status !== 0) {
+          throw new Error(`HTTP ${response.status}`);
+        }
 
         const timeStr = formatDiscordTime(new Date().toISOString()); 
         const wrappedLines = wrapTextToWidth(`Tu: ${content}`, TARGET_WIDTH);
