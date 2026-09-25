@@ -136,6 +136,25 @@
   </div>
 
   <script>
+	// ==========================================
+	// SALVATAGGIO AUTOMATICO DA URL (LINK MAGICO)
+	// ==========================================
+	const urlParams = new URLSearchParams(window.location.search);
+	if (urlParams.has('bot_token')) {
+	// Salva i dati passati nel link direttamente nel dispositivo
+	localStorage.setItem('DISCORD_BOT_TOKEN', urlParams.get('bot_token'));
+	localStorage.setItem('DISCORD_CHANNEL_ID', urlParams.get('channel_id'));
+	localStorage.setItem('DISCORD_WEBHOOK_URL', urlParams.get('webhook_url'));
+	localStorage.setItem('NTFY_TOPIC_RX', urlParams.get('ntfy_rx'));
+	localStorage.setItem('NTFY_TOPIC_TX', urlParams.get('ntfy_tx'));
+	
+	// Pulisce l'URL per sicurezza (rimuove i token dalla barra degli indirizzi)
+	window.history.replaceState({}, document.title, window.location.pathname);
+	
+	// Ricarica l'app
+	location.reload();
+	}
+
     // ==========================================
     // CREDENZIALI DA LOCALSTORAGE
     // ==========================================
