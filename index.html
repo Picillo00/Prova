@@ -251,7 +251,7 @@
 
     function getTopRightHeader() {
       const timestamp = getCurrentTimestamp();
-      const targetWidth = 75; // Larghezza fissa della riga per allineare a destra senza andare a capo
+      const targetWidth = 50; // Larghezza fissa della riga per allineare a destra senza andare a capo
       const padding = Math.max(2, targetWidth - timestamp.length);
       return " ".repeat(padding) + timestamp + "\n";
     }
@@ -299,7 +299,7 @@
     function updateDiscordDisplayContent() {
       let content = "";
       if (discordState === 'CHAT_NAV') {
-        content = `                            ----Discord gruppo RAY-BAN META----\n`;
+        content = `----Discord gruppo RAY-BAN META----\n`;
         const total = chatHistory.length; const start = discordScrollOffset; const end = Math.min(total, start + MAX_VISIBLE_DISCORD);
         for (let i = start; i < end; i++) content += `${chatHistory[i]}\n`;
         const empty = MAX_VISIBLE_DISCORD - (end - start);
@@ -403,7 +403,7 @@
     function updateNtfyDisplayContent() {
       let content = "";
       if (ntfyState === 'CHAT_NAV') {
-        content = `                                           ----NTFY----\n`;
+        content = `----NTFY----\n`;
         const total = ntfyHistory.length; const start = ntfyScrollOffset; const end = Math.min(total, start + MAX_VISIBLE_NTFY);
         for (let i = start; i < end; i++) content += `${ntfyHistory[i]}\n`;
         const empty = MAX_VISIBLE_NTFY - (end - start); for (let i = 0; i < empty; i++) content += "\n";
