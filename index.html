@@ -491,10 +491,9 @@
 
     async function sendNtfyMessage(content) {
       if (!content.trim()) return;
-      
-      // Pulizia e sanitizzazione del topic da localStorage
-      const rawTopic = (NTFY_TOPIC_TX || NTFY_TOPIC_RX || "").trim();
-      if (!rawTopic) {
+
+      const topicToUse = (NTFY_TOPIC_TX || NTFY_TOPIC_RX || "").trim();
+      if (!topicToUse) {
         ntfyHistory.unshift("[ERRORE] Topic Ntfy non configurato!");
         ntfyNavIndex = 0;
         updateNtfyScrollOffset();
@@ -502,38 +501,67 @@
         return;
       }
 
-      const cleanTopic = encodeURIComponent(rawTopic);
+      const url = `https://ntfy.sh/${encodeURIComponent(topicToUse)}`;
 
-      try {
-        // Invio testuale semplice senza JSON/Preflight per massima compatibilità WebView
-        const response = await fetch(`https://ntfy.sh/${cleanTopic}`, { 
-          method: 'POST',
-          headers: {
-            'Title': 'Amore mio (Occhiali)' // Solo testo ASCII per evitare eccezioni di codifica
-          },
-          body: content 
-        });
+      // 1. Prova prima con XMLHttpRequest (più affidabile nelle WebView wearable)
+      return new Promise((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+        xhr.setRequestHeader("Content-Type", "text/plain; charset=utf-8");
 
-        // Gestione delle risposte Opaque (status 0) tipiche delle WebView
-        if (!response.ok && response.status !== 0) {
-          throw new Error(`HTTP ${response.status}`);
+        xhr.onload = function () {
+          // Status 0 o 2xx indica successo della trasmissione
+          if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 0) {
+            onNtfySuccess(content);
+            resolve(true);
+          } else {
+            onNtfyFail(`HTTP ${xhr.status}`);
+            resolve(false);
+          }
+        };
+
+        xhr.onerror = function () {
+          // 2. Fallback: se XHR viene bloccato da CORS, invia con no-cors
+          fetch(url, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: content
+          }).then(() => {
+            onNtfySuccess(content);
+            resolve(true);
+          }).catch((err) => {
+            onNtfyFail(err.message || "Errore Rete");
+            resolve(false);
+          });
+        };
+
+        try {
+          xhr.send(content);
+        } catch (e) {
+          onNtfyFail(e.message || "Eccezione XHR");
+          resolve(false);
         }
+      });
+    }
 
-        const timeStr = formatDiscordTime(new Date().toISOString()); 
-        const wrappedLines = wrapTextToWidth(`Tu: ${content}`, TARGET_WIDTH);
-        wrappedLines.forEach(l => ntfyHistory.unshift(`[${timeStr}] ${l}`));
-        if (ntfyState === 'CHAT_NAV') { 
-          ntfyNavIndex = 0; 
-          updateNtfyScrollOffset(); 
-          updateMainDisplay(); 
-        }
-      } catch (e) { 
-        console.error("Errore di rete invio ntfy:", e); 
-        ntfyHistory.unshift(`[ERRORE] Invio Ntfy fallito`);
-        ntfyNavIndex = 0;
-        updateNtfyScrollOffset();
-        updateMainDisplay();
+    function onNtfySuccess(content) {
+      const timeStr = formatDiscordTime(new Date().toISOString()); 
+      const wrappedLines = wrapTextToWidth(`Tu: ${content}`, TARGET_WIDTH);
+      wrappedLines.forEach(l => ntfyHistory.unshift(`[${timeStr}] ${l}`));
+      if (ntfyState === 'CHAT_NAV') { 
+        ntfyNavIndex = 0; 
+        updateNtfyScrollOffset(); 
+        updateMainDisplay(); 
       }
+    }
+
+    function onNtfyFail(errMsg) {
+      console.error("Errore invio ntfy:", errMsg); 
+      // Mostra l'errore specifico a schermo anziché il testo generico
+      ntfyHistory.unshift(`[ERR] ${errMsg.slice(0, 30)}`);
+      ntfyNavIndex = 0;
+      updateNtfyScrollOffset();
+      updateMainDisplay();
     }
 
     function connectToNtfy() {
