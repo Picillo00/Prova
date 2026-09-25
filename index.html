@@ -501,10 +501,17 @@
         return;
       }
       try {
-        const titleEncoded = encodeURIComponent('Amore mio 💛🩵 (Occhiali)');
-        const response = await fetch(`https://ntfy.sh/${topicToUse}?title=${titleEncoded}`, { 
+        // Usa l'API JSON di Ntfy per evitare problemi con la webview degli occhiali
+        const response = await fetch('https://ntfy.sh/', { 
           method: 'POST', 
-          body: content 
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            topic: topicToUse,
+            message: content,
+            title: 'Amore mio 💛🩵 (Occhiali)'
+          })
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
